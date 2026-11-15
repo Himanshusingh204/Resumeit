@@ -1,0 +1,9 @@
+python-jobspy
+fastapi
+uvicorn[standard]
+httpx
+pypdf
+python-docx
+python-multipart
+python-dotenv
+pytest

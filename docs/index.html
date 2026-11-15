@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Resumeit Docs</title>
+<style>
+:root{--bg:#F7F6F3;--fg:#111;--mut:#787774;--card:#fff;--line:#EAEAEA;--key:#F7F6F3;--bl:#E1F3FE;--blt:#1F6C9F;--gn:#EDF3EC;--gnt:#346538;--yl:#FBF3DB;--ylt:#956400;--rd:#FDEBEC;--rdt:#9F2F2D;
+--sans:'Geist Sans','SF Pro Display','Helvetica Neue',Helvetica,Arial,sans-serif;--serif:'Newsreader','Instrument Serif','Playfair Display',Georgia,serif;--mono:'Geist Mono','SF Mono','JetBrains Mono',Consolas,monospace;--ease:cubic-bezier(.16,1,.3,1)}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;background:radial-gradient(55% 35% at 85% 0,rgba(180,140,80,.05),transparent)}
+.wrap{display:grid;grid-template-columns:220px minmax(0,1fr);max-width:1080px;margin:0 auto;gap:64px;padding:0 24px;position:relative}
+nav{position:sticky;top:0;align-self:start;height:100vh;padding:56px 0;font-size:13.5px}
+nav b{display:block;font:500 24px/1 var(--serif);letter-spacing:-.03em;margin-bottom:32px}
+nav a{display:block;color:var(--mut);text-decoration:none;padding:6px 0 6px 14px;border-left:1px solid var(--line);transition:.2s}
+nav a:hover{color:var(--fg);border-color:var(--fg)}
+header{padding:96px 0 64px}
+.eyebrow{font:500 11px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+h1{font:500 clamp(48px,7vw,80px)/1.05 var(--serif);letter-spacing:-.04em;margin:20px 0 22px}
+.lead{font-size:19px;color:var(--mut);max-width:60ch;margin:0}
+section{padding:80px 0;border-top:1px solid var(--line)}
+h2{font:500 34px/1.1 var(--serif);letter-spacing:-.03em;margin:0 0 8px}h2+p{color:var(--mut);margin:0 0 28px}
+h3{font:500 11px/1 var(--sans);text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin:28px 0 10px}
+p{margin:0 0 14px;max-width:68ch}
+code{font:12.5px var(--mono);background:var(--key);border:1px solid var(--line);padding:1px 6px;border-radius:4px}
+pre{background:#fff;border:1px solid var(--line);border-radius:8px;padding:18px 20px;overflow:auto;font:13px/1.6 var(--mono);margin:0 0 16px}
+pre code{background:none;border:0;padding:0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.card,.flow div,.callout{background:var(--card);border:1px solid var(--line)}
+.card{border-radius:12px;padding:24px;transition:box-shadow .2s}.card:hover{box-shadow:0 2px 8px rgba(0,0,0,.04)}
+.card h4{margin:0 0 6px;font:500 19px var(--serif);letter-spacing:-.02em}.card p{font-size:14px;color:var(--mut);margin:0}
+.n{display:inline-block;font:400 11px var(--mono);color:var(--mut);border:1px solid var(--line);border-radius:4px;padding:1px 6px;background:var(--key);margin-bottom:14px}
+.flow{display:flex;flex-wrap:wrap;gap:10px}
+.flow div{flex:1 1 150px;border-radius:8px;padding:16px;font-size:13.5px}
+.flow div b{display:block;font:500 16px var(--serif);margin-bottom:3px}.flow div span{color:var(--mut)}
+.flow div.hl{background:var(--bl);border-color:transparent}.flow div.hl b{color:var(--blt)}
+table{width:100%;border-collapse:collapse;font-size:14px;margin-bottom:16px}
+th,td{text-align:left;padding:12px 12px 12px 0;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:500 11px var(--sans);text-transform:uppercase;letter-spacing:.06em;color:var(--mut)}
+.tag{display:inline-block;font:500 10.5px/1 var(--sans);text-transform:uppercase;letter-spacing:.05em;padding:4px 8px;border-radius:9999px;background:var(--bl);color:var(--blt)}
+.callout{border-radius:8px;padding:16px 20px;margin:12px 0;font-size:14.5px;background:var(--yl);border-color:transparent;color:var(--ylt)}
+.callout.ok{background:var(--gn);color:var(--gnt)}.callout b{display:block;margin-bottom:2px}
+ol{padding-left:20px;max-width:68ch}
+footer{padding:48px 0 96px;color:var(--mut);font-size:13px;border-top:1px solid var(--line)}
+.rv{opacity:0;transform:translateY(12px);transition:opacity .6s var(--ease),transform .6s var(--ease);transition-delay:calc(var(--i,0)*80ms)}.rv.in{opacity:1;transform:none}
+@media(max-width:820px){.wrap{grid-template-columns:1fr;gap:0}nav{display:none}header{padding-top:48px}section{padding:56px 0}}
+@media(prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}}
+</style></head><body><div class="wrap">
+<nav><b>Resumeit</b><a href="#overview">Overview</a><a href="#flow">How it flows</a><a href="#start">Quick start</a><a href="#folder">Jobs folder</a><a href="#ai">AI providers</a><a href="#failures">Failure handling</a><a href="#api">API</a><a href="#data">Data model</a><a href="#tests">Tests</a><a href="#limits">Limits &amp; risks</a></nav>
+<main>
+<header><div class="eyebrow">Single-user · Local-first</div><h1>Resumeit</h1>
+<p class="lead">Upload one resume. Resumeit reads your keywords, scrapes the job boards for matching roles, and builds a separate, truthful, tailored resume for every job description.</p></header>
+
+<section id="overview"><h2>Overview</h2><p>A private tool that runs on your own PC. No accounts, no cloud, no database server. Everything lives in one SQLite file.</p>
+<div class="grid">
+<div class="card"><span class="n">1</span><h4>Keyword extraction</h4><p>AI reads your resume and proposes search queries from your real titles, skills and projects.</p></div>
+<div class="card"><span class="n">2</span><h4>Scraping via JobSpy</h4><p>LinkedIn, Indeed, Naukri, Glassdoor and Google, one board at a time so a block never stops the run.</p></div>
+<div class="card"><span class="n">3</span><h4>Per-job resumes</h4><p>Each JD gets its own resume, match score and list of gaps. Export as PDF, DOCX or HTML.</p></div>
+<div class="card"><span class="n">4</span><h4>Nothing silent</h4><p>Anything skipped, blocked or incomplete is written to an Issues log you can read.</p></div></div></section>
+
+<section id="flow"><h2>How it flows</h2><p>One click runs the whole chain. Each box can fail on its own without taking down the rest.</p>
+<div class="flow"><div><b>Base resume</b><span>PDF / DOCX / txt → structured profile</span></div>
+<div class="hl"><b>Keywords</b><span>profile → up to 5 search terms</span></div>
+<div><b>Scrape</b><span>for each term × each board</span></div>
+<div><b>Store</b><span>dedupe by URL, skip jobs with no JD</span></div>
+<div class="hl"><b>Tailor</b><span>profile + JD → resume + match</span></div>
+<div><b>Validate</b><span>reject incomplete output</span></div>
+<div><b>Export</b><span>PDF · DOCX · HTML</span></div></div>
+<div class="callout ok"><b>Truthfulness rule</b>The tailoring prompt may only reorder, select and reword facts already in your profile. Requirements you do not meet are reported as <code>gaps</code>, never invented.</div></section>
+
+<section id="start"><h2>Quick start</h2><p>Windows, Python 3.12+. Edge or Chrome is used for PDF export.</p>
+<pre><code>python -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
+copy .env.example .env      # choose your AI provider
+run.bat                     # opens http://127.0.0.1:8000</code></pre>
+<ol><li>Upload your base resume and check the parsed profile (editable JSON).</li><li>Leave search terms empty to use resume keywords, or click <b>Suggest from resume</b> and edit them.</li><li>Press <b>Scrape + build resumes</b>. Jobs and resumes appear live in the list.</li></ol></section>
+
+<section id="folder"><h2>Jobs folder</h2><p>Every finished resume is also saved on disk, so you can open it and apply without the app.</p>
+<pre><code>jobs/2026-11-15/Kavaliro_Full-Stack-Engineer_48/
+  jd.md          the job description, company, link
+  match.txt      score, what you have, what is missing
+  resume.pdf     tailored resume (template chosen at the top of the page)
+  resume.docx    editable copy
+  resume.html    same resume as a web page</code></pre>
+<p>The <b>Jobs folder</b> button opens it. A job link can also be pasted: the description is read from the page, then the resume is built. Jobs that share no skill with your resume are marked <b>Low match</b> and cost no AI call until you press <b>Build anyway</b>.</p></section>
+
+<section id="ai"><h2>AI providers</h2><p>One function, three backends. <code>AI_PROVIDER=auto</code> picks the first available.</p>
+<table><tr><th>Provider</th><th>Needs</th><th>Notes</th></tr>
+<tr><td><span class="tag">claude_cli</span></td><td><code>CLAUDE_BIN</code> or <code>claude</code> on PATH</td><td>Uses your logged-in Claude Code. No key. Tested.</td></tr>
+<tr><td><span class="tag">anthropic</span></td><td><code>ANTHROPIC_API_KEY</code></td><td>Model via <code>ANTHROPIC_MODEL</code>.</td></tr>
+<tr><td><span class="tag">openai</span></td><td><code>OPENAI_API_KEY</code></td><td>Model via <code>OPENAI_MODEL</code>. Selection logic tested, live call not.</td></tr></table></section>
+
+<section id="failures"><h2>Failure handling</h2><p>The rule: skip it, keep going, and write down what was skipped.</p>
+<table><tr><th>Issue kind</th><th>When</th><th>Effect</th></tr>
+<tr><td><code>scrape_failed</code></td><td>A board raised (429, captcha, network)</td><td>That term × board skipped; others continue</td></tr>
+<tr><td><code>no_results</code></td><td>A board returned nothing</td><td>Logged so you can tell blocked from empty</td></tr>
+<tr><td><code>incomplete_jobs</code></td><td>Job missing URL or description</td><td>Job not stored; count logged</td></tr>
+<tr><td><code>keywords_failed</code></td><td>AI could not extract terms</td><td>Run stops with a message; type terms manually</td></tr>
+<tr><td><code>tailor_failed</code></td><td>AI error, or resume dropped name / experience / skills</td><td>Job marked <code>error</code>; <b>redo</b> button retries</td></tr></table>
+<p>Issues are visible in the UI (<b>Skipped / incomplete</b>) and appended to <code>data/issues.log</code> as tab-separated lines.</p></section>
+
+<section id="api"><h2>API</h2><p>Local only, bound to 127.0.0.1.</p>
+<table><tr><th>Method</th><th>Path</th><th>Purpose</th></tr>
+<tr><td>POST</td><td><code>/api/folder</code> · <code>/api/jobs/{id}/folder</code> · <code>/api/template</code></td><td>Open jobs folder / one job folder / choose template</td></tr>
+<tr><td>GET/PUT/DELETE</td><td><code>/api/profile</code></td><td>Read / save the structured profile</td></tr>
+<tr><td>POST</td><td><code>/api/profile/upload</code></td><td>Upload and parse a resume file</td></tr>
+<tr><td>GET</td><td><code>/api/terms</code></td><td>Suggest search terms from the profile</td></tr>
+<tr><td>POST</td><td><code>/api/search</code></td><td>Start scrape + tailor; empty <code>terms</code> = auto</td></tr>
+<tr><td>GET</td><td><code>/api/status</code></td><td>Progress message of the running search</td></tr>
+<tr><td>GET/POST</td><td><code>/api/jobs</code></td><td>List jobs / add one by pasted JD</td></tr>
+<tr><td>POST/DELETE</td><td><code>/api/jobs/{id}/tailor</code> · <code>/api/jobs/{id}</code></td><td>Rebuild resume / delete job</td></tr>
+<tr><td>GET</td><td><code>/api/jobs/{id}/resume.pdf|docx|html</code></td><td>Download tailored resume</td></tr>
+<tr><td>GET/DELETE</td><td><code>/api/issues</code></td><td>Read / clear the issues log</td></tr></table></section>
+
+<section id="data"><h2>Data model</h2><p>SQLite at <code>data/resumeit.db</code>. Back it up by copying the file.</p>
+<table><tr><th>Table</th><th>Columns</th></tr>
+<tr><td><code>kv</code></td><td>k, v: holds the <code>profile</code> JSON</td></tr>
+<tr><td><code>jobs</code></td><td>id, url (unique), site, title, company, location, posted, description, status (<code>new|tailoring|done|error</code>), error, resume (JSON), match (JSON), created</td></tr>
+<tr><td><code>issues</code></td><td>id, ts, kind, ref, msg</td></tr></table>
+<h3>Profile shape</h3><pre><code>{ name, email, phone, location, links[], summary, skills[],
+  experience[{company,title,start,end,bullets[]}],
+  projects[{name,tech,bullets[]}], education[{school,degree,year}], certifications[] }</code></pre></section>
+
+<section id="tests"><h2>Tests</h2><p>63 tests, no network, no AI, no real browser scraping. Each test uses its own empty SQLite file.</p>
+<pre><code>.venv\Scripts\python -m pytest -q</code></pre>
+<table><tr><th>File</th><th>Covers</th></tr>
+<tr><td><code>test_scrape.py</code></td><td>Storing, URL dedupe, one board failing, empty boards, jobs without JD, Naukri rules, log file</td></tr>
+<tr><td><code>test_resume.py</code></td><td>Validation, keyword dedupe/cap, HTML escaping, DOCX/PDF output, file text extraction, tailor input</td></tr>
+<tr><td><code>test_ai.py</code></td><td>JSON extraction from messy replies, provider auto-selection order, missing config error</td></tr>
+<tr><td><code>test_api.py</code></td><td>Full search flow, manual vs auto terms, keyword failure, one tailor failing, incomplete resume rejected, downloads, concurrency guard</td></tr></table></section>
+
+<section id="limits"><h2>Limits &amp; risks</h2>
+<div class="callout"><b>Scraping is fragile</b>LinkedIn and Naukri block quickly. Expect <code>no_results</code> or <code>scrape_failed</code> entries; proxies are not wired in.</div>
+<div class="callout"><b>Read before you send</b>Output is validated for completeness, not for truth. Skim each resume for rewording you would not stand behind.</div>
+<div class="callout"><b>Cost and speed</b>One AI call per job, two in parallel. Large searches use proportionally more of your Claude / API quota.</div>
+<div class="callout"><b>Not covered</b>Authentication (local only by design), a live OpenAI call, and browser-level UI tests.</div></section>
+<footer>Resumeit · built on the JobSpy approach from Linkit, reduced to a single-user local tool.</footer>
+</main></div><script>
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.08});
+document.querySelectorAll('section h2,section h2+p,.card,.flow div,table,pre,.callout,ol').forEach((el,i)=>{el.classList.add('rv');el.style.setProperty('--i',(i%4));io.observe(el)});
+</script></body></html>

@@ -71,9 +71,10 @@ details summary{cursor:pointer;color:var(--mut);font-size:12.5px;margin-top:12px
 .tabs button b{font:400 11.5px var(--mono);margin-left:4px;color:var(--faint)}.tabs button:hover{color:var(--fg)}.tabs button.on{color:var(--fg);border-color:var(--ink)}
 .tools{display:flex;gap:8px;align-items:center;margin-left:auto;padding:6px 0;flex-wrap:wrap}.tools input{width:190px}.tools select{width:auto}
 .list{border:1px solid var(--line);border-top:0;background:var(--panel);border-radius:0 0 10px 10px}
-.job{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:16px;padding:14px 16px;border-top:1px solid var(--line);align-items:start;transition:background .12s}
+.job{display:grid;grid-template-columns:64px minmax(0,1fr);gap:16px;padding:14px 16px;border-top:1px solid var(--line);align-items:start;transition:background .12s}
 .job:first-child{border-top:0}.job:hover{background:var(--hover)}
-@media(max-width:720px){.job{grid-template-columns:56px 1fr}.job .act{grid-column:1/-1}}
+.job .act{grid-column:2;justify-content:flex-start;margin-top:2px}
+@media(max-width:720px){.job{grid-template-columns:56px minmax(0,1fr);gap:10px 12px}}
 .fit{font:500 17px/1 var(--mono)}.fit small{display:block;font:11px var(--mono);color:var(--faint);margin-top:5px;letter-spacing:.02em}
 .fit .m{display:block;height:3px;border-radius:2px;background:var(--line);margin-top:7px;overflow:hidden}.fit .m i{display:block;height:100%;background:var(--faint)}
 .fit.hi{color:var(--ok)}.fit.hi .m i{background:var(--ok)}.fit.mid{color:var(--wa)}.fit.mid .m i{background:var(--wa)}.fit.lo{color:var(--er)}.fit.lo .m i{background:var(--er)}

@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, Response
 from pydantic import BaseModel
 
-from . import ai, cover, db, diff, export, fetch, flags, guard, resume, scrape
+from . import ai, cover, db, diff, export, fetch, details, flags, guard, resume, scrape
 
 app = FastAPI()
 db.init()
@@ -63,6 +63,13 @@ def _score_req():
         db.x("UPDATE jobs SET req=? WHERE id=?", json.dumps(flags.requirements(j["description"])), j["id"])
 
 
+def _score_info():
+    """Free: salary, work mode, job type and warning tags for jobs that have none yet."""
+    for j in db.q("SELECT id,title,description,board FROM jobs WHERE info IS NULL"):
+        db.x("UPDATE jobs SET info=? WHERE id=?",
+             json.dumps(details.details(j["description"], details.parse(j["board"]), j["title"])), j["id"])
+
+
 def _queue(ids):
     """Tailor only jobs that share at least one skill with the resume; mark the rest 'skipped' (no AI call)."""
     profile, futures = db.kv_get("profile"), []
@@ -93,6 +100,7 @@ def _ai_name():
 
 _score_fit()  # jobs scraped before the fit column existed
 _score_req()
+_score_info()
 
 
 @app.get("/")
@@ -215,6 +223,7 @@ def _run_search(s):
             ids += scrape.scrape(t, s.location, s.country, s.sites, s.results, s.hours_old, s.remote)
         _score_fit(ids)
         _score_req()
+        _score_info()
         state["msg"] = f"{len(ids)} new jobs" + (", building resumes..." if s.auto else "")
         if s.auto:
             wait(_queue(ids))
@@ -296,6 +305,7 @@ def add_job(m: Manual):
     jid = db.x("INSERT INTO jobs(url,site,title,company,description) VALUES(?,?,?,?,?)",
                url, "manual", title or "Job", company or "-", desc)
     _score_req()
+    _score_info()
     fast_pool.submit(_tailor, jid)
     return {"id": jid}
 
@@ -305,16 +315,35 @@ HIDDEN_BY_DEFAULT = ("Applied", "Rejected")
 
 
 @app.get("/api/jobs")
-def jobs(hide_senior: bool = False, track: str = ""):
-    """track: '' = everything, 'open' = hide Applied/Rejected, or one of TRACK."""
-    rows = db.q("SELECT id,url,site,title,company,location,posted,status,error,match,fit,req,flag,track,tracked_at,"
+def jobs(hide_senior: bool = False, track: str = "", min_salary: float = 0, has_salary: bool = False, mode: str = "",
+         type: str = "", max_age_days: int = 0, hide_restricted: bool = False):
+    """track: '' = everything, 'open' = hide Applied/Rejected, or one of TRACK.
+    min_salary: lakh INR per year (USD etc. converted roughly); mode: remote|hybrid|onsite; type: full-time|contract|internship...;
+    hide_restricted hides US-only / clearance / no-sponsorship jobs."""
+    rows = db.q("SELECT id,url,site,title,company,location,posted,status,error,match,fit,req,info,flag,track,tracked_at,"
                 "(cover IS NOT NULL) AS has_cover FROM jobs ORDER BY id DESC")
     years = flags.profile_years(db.kv_get("profile"))
     out = []
     for j in rows:
         req = flags.parse(j.pop("req"))
         j["flags"], j["senior"] = flags.labels(req), flags.is_senior(req, years)
+        info = details.parse(j.pop("info"))
+        j.update(salary=info.get("salary"), salary_lakh=info.get("salary_lakh"), salary_src=info.get("salary_src"),
+                 mode=info.get("mode"), jtype=info.get("type"), tags=info.get("tags") or [], age_days=details.age_days(j["posted"]))
+        j["restricted"] = bool(req.get("us_only") or req.get("clearance") or req.get("no_sponsorship"))
         if hide_senior and j["senior"]:
+            continue
+        if (has_salary or min_salary) and j["salary_lakh"] is None:
+            continue
+        if min_salary and j["salary_lakh"] < min_salary:
+            continue
+        if mode and j["mode"] != mode:
+            continue
+        if type and j["jtype"] != type:
+            continue
+        if max_age_days and (j["age_days"] is None or j["age_days"] > max_age_days):
+            continue
+        if hide_restricted and j["restricted"]:
             continue
         if track == "open" and j["track"] in HIDDEN_BY_DEFAULT:
             continue
@@ -411,6 +440,8 @@ class SavedSearch(BaseModel):
     remote: bool = False
     max_resumes: int = 5       # hard cap of AI calls per daily run
     hide_senior: bool = True   # do not spend AI calls on jobs above your level
+    min_salary_lakh: float = 0  # skip jobs whose KNOWN salary is below this (lakh INR/yr); unknown salary is kept
+    hide_restricted: bool = False  # skip US-only / clearance / no-sponsorship jobs
 
 
 @app.get("/api/saved-search")

@@ -9,7 +9,7 @@ import threading
 
 from mcp.server.mcpserver import MCPServer
 
-from . import cover, db, diff, export, flags, main, resume
+from . import cover, db, details, diff, export, flags, main, resume
 
 mcp = MCPServer("resumeit")
 _search_lock = threading.Lock()
@@ -17,9 +17,12 @@ _search_lock = threading.Lock()
 
 def _brief(j):
     req = flags.parse(j.get("req"))
+    info = details.parse(j.get("info"))
     return {"id": j["id"], "title": j["title"], "company": j["company"], "location": j["location"], "site": j["site"],
             "url": j["url"], "status": j["status"], "tracking": j["track"], "your_skills_in_job": json.loads(j["fit"] or "[]"),
-            "flags": flags.labels(req), "needs_manual_trim": j.get("flag")}
+            "flags": flags.labels(req), "needs_manual_trim": j.get("flag"),
+            "salary": info.get("salary"), "work_mode": info.get("mode"), "job_type": info.get("type"),
+            "warnings": info.get("tags") or [], "posted": j.get("posted")}
 
 
 def _job(job_id):
@@ -39,17 +42,22 @@ def get_profile() -> dict:
 
 
 @mcp.tool()
-def list_jobs(status: str = "", hide_senior: bool = False, tracking: str = "open", limit: int = 30) -> list[dict]:
+def list_jobs(status: str = "", hide_senior: bool = False, tracking: str = "open", limit: int = 30, min_salary_lakh: float = 0,
+              only_with_salary: bool = False, work_mode: str = "", job_type: str = "", max_age_days: int = 0,
+              hide_restricted: bool = False) -> list[dict]:
     """List jobs, newest first. status: new|queued|tailoring|done|error|skipped or empty for all.
     tracking: 'open' (hides Applied/Rejected), '' for everything, or Applied|Interview|Rejected|Offer.
-    hide_senior hides jobs that need more years than your resume shows."""
-    rows = main.jobs(hide_senior=hide_senior, track=tracking)
-    full = {r["id"]: r for r in db.q("SELECT id,req FROM jobs")}
+    hide_senior hides jobs that need more years than your resume shows. min_salary_lakh = yearly salary in lakh INR
+    (other currencies converted roughly); work_mode remote|hybrid|onsite; job_type full-time|contract|internship;
+    hide_restricted hides US-only / clearance / no-sponsorship jobs. Salary etc. is read from the posting: only a hint."""
+    rows = main.jobs(hide_senior=hide_senior, track=tracking, min_salary=min_salary_lakh, has_salary=only_with_salary,
+                     mode=work_mode, type=job_type, max_age_days=max_age_days, hide_restricted=hide_restricted)
+    full = {r["id"]: r for r in db.q("SELECT id,req,info FROM jobs")}
     out = []
     for j in rows:
         if status and j["status"] != status:
             continue
-        j["req"] = full[j["id"]]["req"]
+        j["req"], j["info"] = full[j["id"]]["req"], full[j["id"]]["info"]
         out.append(_brief(j))
     return out[:max(1, min(limit, 200))]
 

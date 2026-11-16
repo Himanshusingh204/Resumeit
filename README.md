@@ -53,6 +53,8 @@ Optional `CLAUDE_MODEL` / `ANTHROPIC_MODEL` / `OPENAI_MODEL` pick a cheaper or f
 
 Anything that was skipped or failed is listed under **Issues** and saved in `data/issues.log`.
 
+Before you apply, each job card shows (read from the posting, no AI): **salary** (board field or text, e.g. `₹12–18 LPA`), work mode, job type, how old it is and warnings like `night shift` / `bond` / `unpaid`. Filters: min salary, salary shown, remote/hybrid/on-site, type, posted date, hide above my level, hide US-only/clearance/no-sponsorship, hide warnings. Many postings list no salary; the card then says "salary not listed".
+
 More: **What changed** in the preview (your base resume vs the tailored one), a per-job **Applied / Interview / Rejected / Offer** tracker (set by you only), badges like `5+ yrs` / `US only`, an optional cover letter, **Backup** and **Fix 2-page PDFs** buttons.
 
 ## Daily scan (never applies)

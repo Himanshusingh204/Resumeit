@@ -17,7 +17,7 @@ def init():
         CREATE TABLE IF NOT EXISTS issues(
           id INTEGER PRIMARY KEY, ts TEXT DEFAULT CURRENT_TIMESTAMP, kind TEXT, ref TEXT, msg TEXT);""")
         have = [r[1] for r in c.execute("PRAGMA table_info(jobs)")]
-        for col in ("fit", "req", "flag", "track", "tracked_at", "cover"):  # columns added after first release
+        for col in ("fit", "req", "flag", "track", "tracked_at", "cover", "board", "info"):  # columns added after first release
             if col not in have:
                 c.execute(f"ALTER TABLE jobs ADD COLUMN {col} TEXT")
 

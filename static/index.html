@@ -159,7 +159,18 @@ iframe{width:100%;height:68vh;border:1px solid var(--line);border-radius:8px;bac
   <div class="bar2">
     <div class="tabs" id="tabs"></div>
     <div class="tools"><button class="btn sm" id="stopb" onclick="stopQueue()" hidden></button><button class="btn sm p" id="pendb" onclick="pending()" hidden></button>
-      <input type="text" id="q" placeholder="Filter"><label class="mut" style="font-size:12px"><input type="checkbox" id="hsr" onchange="hideSr=this.checked;draw()"> hide above my level</label><select id="sort" class="btn sm"><option value="new">Newest</option><option value="match">Best match</option></select></div>
+      <input type="text" id="q" placeholder="Filter"><select id="sort" class="btn sm"><option value="new">Newest</option><option value="match">Best match</option></select></div>
+  </div>
+  <div class="bar2" id="flt" style="flex-wrap:wrap;gap:8px;font-size:12px">
+    <span class="mut">Filters:</span>
+    <input type="text" id="fsal" placeholder="Min salary (LPA)" style="width:120px" oninput="draw()" title="Lakh INR per year. Other currencies converted roughly. Jobs with unknown salary are hidden while this is set.">
+    <label class="mut"><input type="checkbox" id="fhas" onchange="draw()"> salary shown</label>
+    <select id="fmode" class="btn sm" onchange="draw()"><option value="">Any work mode</option><option value="remote">Remote</option><option value="hybrid">Hybrid</option><option value="onsite">On-site</option></select>
+    <select id="ftype" class="btn sm" onchange="draw()"><option value="">Any type</option><option value="full-time">Full-time</option><option value="contract">Contract</option><option value="internship">Internship</option><option value="part-time">Part-time</option></select>
+    <select id="fage" class="btn sm" onchange="draw()"><option value="0">Any date</option><option value="1">Last 24h</option><option value="3">Last 3 days</option><option value="7">Last week</option></select>
+    <label class="mut"><input type="checkbox" id="hsr" onchange="hideSr=this.checked;draw()"> hide above my level</label>
+    <label class="mut"><input type="checkbox" id="fres" onchange="draw()"> hide US-only / clearance / no sponsorship</label>
+    <label class="mut"><input type="checkbox" id="fwarn" onchange="draw()"> hide warnings (night shift, bond, unpaid...)</label>
   </div>
   <div class="list"><div id="jobs"></div><div class="empty" id="emptyS" hidden></div></div>
 </main>
@@ -254,6 +265,13 @@ function drawTabs(){$('tabs').innerHTML=Object.entries(GROUPS).map(([k,[n,f]])=>
 $('tabs').onclick=e=>{const b=e.target.closest('button');if(b){filter=b.dataset.f;drawTabs();draw()}};
 $('q').oninput=draw;$('sort').onchange=draw;
 function rank(j){const m=sc(j);return m.score!=null?m.score:Math.min(99,fitOf(j).length*8)}
+function infoLine(j){const b=[];
+  if(j.salary)b.push(`<span class="y" title="Read from the posting (${j.salary_src==='board'?'job board field':'job text'}). Check it on the site.">${esc(j.salary)}</span>`);
+  else b.push('<span class="mut" title="No salary found in the posting">salary not listed</span>');
+  if(j.mode)b.push(`<span>${esc(j.mode)}</span>`);if(j.jtype)b.push(`<span>${esc(j.jtype)}</span>`);
+  if(j.age_days!=null)b.push(`<span>${j.age_days<=0?'today':j.age_days+'d ago'}</span>`);
+  (j.tags||[]).forEach(t=>b.push(`<span class="g" title="Warning read from the job text">${esc(t)}</span>`));
+  return `<div class="ch">${b.join('')}</div>`}
 function rowHtml(j){const m=sc(j),built=m.score!=null,fit=fitOf(j),cls=built?(m.score>=70?'hi':m.score>=45?'mid':'lo'):'';
   const num=built?m.score+'%':(fit.length?fit.length:'-'),cap=built?'match':(fit.length?'skills':''),pct=built?m.score:Math.min(100,fit.length*12);
   const chips=built?[...(m.matched||[]).slice(0,4).map(g=>`<span class="y" title="${esc(g)}">${esc(g)}</span>`),...(m.gaps||[]).slice(0,3).map(g=>`<span class="g" title="Not in your resume: ${esc(g)}">gap: ${esc(g)}</span>`)]
@@ -265,10 +283,10 @@ function rowHtml(j){const m=sc(j),built=m.score!=null,fit=fitOf(j),cls=built?(m.
   else act=`<button class="btn sm ${j.status==='new'&&fit.length?'p':''}" onclick="redo(${j.id})">${j.status==='skipped'?'Build anyway':'Build'}</button>`;
   return `<div class="job" data-id="${j.id}"><div class="fit ${cls}">${num}${cap?`<small>${cap}</small>`:''}<span class="m"><i style="width:${pct}%"></i></span></div>
    <div style="min-width:0"><div class="jt">${esc(j.title)}</div><div class="sub">${esc(j.company)}${j.location?' · '+esc(j.location):''}${j.posted?' · '+esc(j.posted):''} · ${esc(j.site)}${j.url.startsWith('http')?` · <a href="${esc(j.url)}" target="_blank" rel="noopener">open</a>`:''}</div>
-   ${chips.length?`<div class="ch">${chips.join('')}</div>`:''}${j.error&&j.status!=='skipped'?`<div class="err">${esc(j.error)}</div>`:''}${j.flag?`<div class="err">${esc(j.flag)}</div>`:''}</div>
+   ${infoLine(j)}${chips.length?`<div class="ch">${chips.join('')}</div>`:''}${j.error&&j.status!=='skipped'?`<div class="err">${esc(j.error)}</div>`:''}${j.flag?`<div class="err">${esc(j.flag)}</div>`:''}</div>
    <div class="act">${(j.flags||[]).map(f=>`<span class="fl${j.senior&&/yrs/.test(f)?' bad':''}" title="Read from the job text. Only a hint.">${esc(f)}</span>`).join('')}<select class="btn sm trk" onchange="track(${j.id},this.value)" title="You set this by hand. The app never applies for you."><option value="">Not applied</option>${['Applied','Interview','Rejected','Offer'].map(t=>`<option${j.track===t?' selected':''}>${t}</option>`).join('')}</select><span class="tag ${j.status}">${LABEL[j.status]||j.status}</span>${act}<button class="btn sm ghost icon" onclick="del(${j.id})" title="Delete job" style="width:28px">${IC.tr}</button></div></div>`}
 function draw(){const q=$('q').value.toLowerCase(),box=$('jobs');
-  let l=jobs.filter(j=>(filter==='applied'?!!j.track:(filter==='all'?!['Applied','Rejected'].includes(j.track):true))&&GROUPS[filter][1](j)&&(!hideSr||!j.senior)&&`${j.title} ${j.company}`.toLowerCase().includes(q));
+  let l=jobs.filter(j=>(filter==='applied'?!!j.track:(filter==='all'?!['Applied','Rejected'].includes(j.track):true))&&GROUPS[filter][1](j)&&(!hideSr||!j.senior)&&okFilters(j)&&`${j.title} ${j.company}`.toLowerCase().includes(q));
   if($('sort').value==='match')l.sort((a,b)=>rank(b)-rank(a));
   const keep=new Set();let ref=box.firstElementChild;
   for(const j of l){keep.add(j.id);const h=rowHtml(j);let c=cache.get(j.id);
@@ -279,6 +297,15 @@ function draw(){const q=$('q').value.toLowerCase(),box=$('jobs');
   const e=$('emptyS');e.hidden=l.length>0;
   e.innerHTML=`<b>${jobs.length?'Nothing in this view':'No jobs yet'}</b>${jobs.length?'Try another tab or clear the filter.':profOk?'Press Find jobs on the left.':'Start by reading your resume on the left.'}`}
 let hideSr=false,pid=0;
+function okFilters(j){const ms=parseFloat($('fsal').value);
+  if((ms>0||$('fhas').checked)&&j.salary_lakh==null)return false;
+  if(ms>0&&j.salary_lakh<ms)return false;
+  if($('fmode').value&&j.mode!==$('fmode').value)return false;
+  if($('ftype').value&&j.jtype!==$('ftype').value)return false;
+  const a=+$('fage').value;if(a&&(j.age_days==null||j.age_days>a))return false;
+  if($('fres').checked&&j.restricted)return false;
+  if($('fwarn').checked&&(j.tags||[]).length)return false;
+  return true}
 function prev(id,t){pid=id;$('dfv').hidden=true;const j=jobs.find(x=>x.id===id)||{},m=sc(j);$('pmeta').textContent=(m.score!=null?`Match ${m.score}%`:'')+(m.gaps?.length?` · Not in your resume: ${m.gaps.slice(0,6).join(', ')}`:'')+' · Built only from facts in your resume. Read it before sending.';
   $('pt').textContent=t;$('ptpl').value=TPL;setPrev();$('pdlg').showModal()}
 function setPrev(){$('pf').src=`/api/jobs/${pid}/resume.html?t=${$('ptpl').value}`;$('ppdf').href=`/api/jobs/${pid}/resume.pdf?t=${$('ptpl').value}`;$('pdoc').href=`/api/jobs/${pid}/resume.docx`}

@@ -7,7 +7,7 @@ Create the file data/STOP to make a running scan stop before its next resume.
 import json
 from datetime import datetime
 
-from . import db, export, flags, main, resume, scrape
+from . import db, details, export, flags, main, resume, scrape
 
 
 def stop_file():
@@ -16,7 +16,7 @@ def stop_file():
 
 def run(max_resumes=None):
     cfg = db.kv_get("saved_search") or {}
-    out = {"new": 0, "built": [], "skipped_senior": 0, "stopped": False, "error": None}
+    out = {"new": 0, "built": [], "skipped_senior": 0, "skipped_filters": 0, "stopped": False, "error": None}
     profile = db.kv_get("profile")
     if resume.profile_problem(profile):
         out["error"] = "no usable resume profile"
@@ -39,10 +39,19 @@ def run(max_resumes=None):
     out["new"] = len(ids)
     main._score_fit(ids)
     main._score_req()
+    main._score_info()
     years = flags.profile_years(profile)
     picks = []
     for jid in ids:
-        j = db.q("SELECT id,fit,req FROM jobs WHERE id=?", jid)[0]
+        j = db.q("SELECT id,fit,req,info FROM jobs WHERE id=?", jid)[0]
+        info = details.parse(j["info"])
+        if cfg.get("min_salary_lakh") and info.get("salary_lakh") is not None and info["salary_lakh"] < cfg["min_salary_lakh"]:
+            out["skipped_filters"] += 1  # only when a salary is known and too low; unknown salary is kept
+            continue
+        if cfg.get("hide_restricted") and flags.labels(flags.parse(j["req"])) and any(
+                flags.parse(j["req"]).get(k) for k in ("us_only", "clearance", "no_sponsorship")):
+            out["skipped_filters"] += 1
+            continue
         if not json.loads(j["fit"] or "[]"):
             continue  # none of your skills: no AI call
         if cfg.get("hide_senior", True) and flags.is_senior(flags.parse(j["req"]), years):

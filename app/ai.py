@@ -9,9 +9,14 @@ def _claude_bin():
 
 def _cli(system, user):
     # shortcut: one process per call via stdin; fine for a single user
+    if not _claude_bin():
+        raise RuntimeError("Claude Code CLI not found: install it or set CLAUDE_BIN in .env")
     model = os.getenv("CLAUDE_MODEL")  # e.g. a cheaper/faster model; empty = Claude Code's default
-    r = subprocess.run([_claude_bin(), "-p", *(["--model", model] if model else []), "--append-system-prompt", system],
-                       input=user, capture_output=True, text=True, timeout=300, encoding="utf-8")
+    try:
+        r = subprocess.run([_claude_bin(), "-p", *(["--model", model] if model else []), "--append-system-prompt", system],
+                           input=user, capture_output=True, text=True, timeout=300, encoding="utf-8")
+    except subprocess.TimeoutExpired:
+        raise RuntimeError("claude cli timed out after 300 s")
     if r.returncode:
         raise RuntimeError(f"claude cli: {r.stderr[:300]}")
     return r.stdout
@@ -65,11 +70,21 @@ def provider():
         return "openai"
     if _gemini_key():
         return "gemini"
-    raise RuntimeError("No AI configured: install Claude Code or set ANTHROPIC_API_KEY / OPENAI_API_KEY / GEMINI_API_KEY in .env")
+    raise RuntimeError("No AI configured. Free option: get a Gemini key at https://aistudio.google.com/apikey, put it in .env as GEMINI_API_KEY and restart. "
+                       "(Claude Code, ANTHROPIC_API_KEY and OPENAI_API_KEY also work.)")
 
 
 def complete(system, user):
-    return {"claude_cli": _cli, "anthropic": _anthropic, "openai": _openai, "gemini": _gemini}[provider()](system, user)
+    name = provider()
+    fn = {"claude_cli": _cli, "anthropic": _anthropic, "openai": _openai, "gemini": _gemini}.get(name)
+    if not fn:
+        raise RuntimeError(f"Unknown AI_PROVIDER '{name}': use claude_cli, anthropic, openai, gemini or auto")
+    try:
+        return fn(system, user)
+    except KeyError as e:  # os.environ[...] of a missing key
+        raise RuntimeError(f"{name}: missing setting {e} in .env") from None
+    except httpx.HTTPError as e:
+        raise RuntimeError(f"{name} request failed: {type(e).__name__} {str(e)[:200]}") from None
 
 
 def complete_json(system, user):

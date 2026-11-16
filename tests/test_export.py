@@ -57,6 +57,7 @@ def test_open_folder_endpoints(profile, monkeypatch, job_row):
 # ---- reading a job from its link
 class Resp:
     def __init__(self, text): self.text = text
+    def raise_for_status(self): pass
 
 
 LD = json.dumps({"@type": "JobPosting", "title": "Data Engineer", "hiringOrganization": {"name": "Qentelli"},

@@ -322,7 +322,7 @@ def test_backup_zip_has_db_and_jobs(profile, job_row):
 
 def test_run_bat_does_not_start_a_second_server():
     bat = (export.Path(__file__).resolve().parent.parent / "run.bat").read_text()
-    assert "8000" in bat and "LISTENING" in bat and bat.index("LISTENING") < bat.index("uvicorn")
+    assert "8000" in bat and "LISTENING" in bat and bat.index("LISTENING") < bat.index("-m app")
 
 
 @pytest.mark.skipif(not __import__("os").getenv("OPENAI_API_KEY"), reason="needs OPENAI_API_KEY")
@@ -461,3 +461,16 @@ def test_oversized_upload_is_rejected(monkeypatch):
     monkeypatch.setattr(main, "MAX_UPLOAD", 100)
     r = client.post("/api/profile/upload", files={"f": ("r.txt", b"x" * 500)})
     assert r.status_code == 413 and "10 MB" in r.json()["detail"]
+
+
+def test_rejected_resume_is_retried_once_with_the_reason(profile, monkeypatch, job_row):
+    users = []
+
+    def fake(s, u):
+        users.append(u)
+        return tailored(skills=["Python", "Kubernetes"]) if len(users) == 1 else tailored()
+    monkeypatch.setattr(ai, "complete_json", fake)
+    jid = job_row()
+    main._tailor(jid)
+    assert client.get(f"/api/jobs/{jid}").json()["status"] == "done"
+    assert len(users) == 2 and "REJECTED" in users[1] and "Kubernetes" in users[1]

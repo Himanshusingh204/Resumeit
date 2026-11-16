@@ -1,8 +1,10 @@
-import json, sqlite3, threading
+from contextlib import closing
+import json, logging, sqlite3, threading
 from pathlib import Path
 
 DB = Path(__file__).resolve().parent.parent / "data" / "resumeit.db"
 _lock = threading.Lock()
+log = logging.getLogger("resumeit")
 
 
 def init():
@@ -23,7 +25,7 @@ def init():
 
 
 def _run(sql, a):
-    with _lock, sqlite3.connect(DB) as c:
+    with _lock, closing(sqlite3.connect(DB, timeout=30)) as c, c:  # closing: do not leave file handles to the GC
         c.row_factory = sqlite3.Row
         cur = c.execute(sql, a)
         return cur, [dict(r) for r in cur.fetchall()] if cur.description else []
@@ -49,6 +51,7 @@ def kv_set(k, v):
 def issue(kind, ref, msg):
     """Record something that failed or came out incomplete, so a skipped item is never silent."""
     msg = str(msg)[:500]
+    log.warning("issue %s [%s]: %s", kind, ref, msg)
     x("INSERT INTO issues(kind,ref,msg) VALUES(?,?,?)", kind, str(ref), msg)
     with open(DB.parent / "issues.log", "a", encoding="utf-8") as f:
         f.write(f"{kind}\t{ref}\t{msg}\n")

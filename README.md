@@ -1,25 +1,70 @@
 # Resumeit
 
-A local, single-user tool that finds jobs and builds a **tailored one-page resume for each job description** from your own resume.
+A local, single-user tool that finds jobs and builds a **tailored, one-page resume for each job description** from your own resume. You review it and apply yourself.
 
-You upload your resume once. Resumeit reads your keywords, scrapes job boards (LinkedIn, Indeed, Naukri, Glassdoor, Google) with [JobSpy](https://github.com/speedyapply/JobSpy), and writes a separate resume per job. You review it and apply yourself.
+![Resumeit home](docs/img/home.png)
+
+## Features
+
+- Upload a resume once (PDF, DOCX, TXT or pasted text). It is parsed into a structured profile you can edit.
+- Search LinkedIn, Indeed, Naukri, Glassdoor and Google with [JobSpy](https://github.com/speedyapply/JobSpy), or add a job from a link or pasted description.
+- Every job shows, without any AI call: how many of your skills it mentions, salary, work mode, job type, age, and warnings (night shift, bond, unpaid, seniority, US-only).
+- Build a tailored resume per job: 7 templates, PDF and DOCX export, a "What changed" diff against your base resume, optional cover letter.
+- Manual tracker (Applied / Interview / Rejected / Offer), daily scan, MCP server, backup.
+
+| Preview and "What changed" | Dark theme | Mobile |
+|---|---|---|
+| ![Preview](docs/img/preview.png) | ![Dark](docs/img/home-dark.png) | ![Mobile](docs/img/mobile.png) |
 
 ## Rules the tool follows
 
-- **It never applies for you.** No forms, no emails, no "Easy Apply". It only prepares; you press apply on the original site.
-- **No lies in the resume.** Only facts from your own resume are used. Skills you lack are shown as gaps, never added.
-- **One page.** Every PDF is page-counted and trimmed to a single A4 page, or flagged "manual trim needed". See [docs/PLAN.md](docs/PLAN.md).
+1. **It never applies for you.** No forms, emails or "Easy Apply". You press apply on the original site. "Applied" is only ever set by you.
+2. **No lies in the resume.** Only facts from your resume are used. Skills you lack show as gaps. A code check (the truth guard) rejects any new skill, company, title, date, degree or number.
+3. **One page** (two only if the content really needs it). Every PDF is page-counted and trimmed, never padded.
 
-## Your data stays on your computer
+Full plan: [docs/PLAN.md](docs/PLAN.md).
 
-Everything runs on `127.0.0.1`. Your resume, jobs and generated files live in two folders that are git-ignored:
+## How it works
 
-- `data/` your parsed resume and the job database (SQLite)
-- `jobs/` one folder per job: `jd.md`, `match.txt`, `resume.pdf`, `resume.docx`, `resume.html`
+```mermaid
+flowchart LR
+    U[You] -->|upload / paste| P[Parse resume<br/>pypdf, python-docx]
+    P --> DB[(SQLite<br/>data/resumeit.db)]
+    U -->|titles, city, boards| S[Scraper<br/>JobSpy]
+    S --> F[Offline analysis<br/>skill fit, salary, flags]
+    F --> DB
+    DB --> UI[Web UI<br/>FastAPI + static page]
+    U -->|press Build| Q[Build queue]
+    Q --> AI[AI provider<br/>Claude / OpenAI / Gemini]
+    AI --> G[Truth guard +<br/>1-page guard]
+    G -->|pass| O[jobs/date/company_title/<br/>resume.pdf, .docx, .html]
+    G -->|fail| I[Issues log]
+    O --> UI
+    UI -->|open job link| A[You apply on the site]
+```
 
-Nothing is uploaded anywhere except the text sent to the AI provider you choose (see below). The page loads fonts from Google Fonts; offline it falls back to system fonts.
+Data flow, step by step:
 
-## Setup (Windows)
+1. **Parse.** Your file is turned into text, then into a JSON profile (name, skills, experience, projects, education). This is the only source of facts.
+2. **Search.** JobSpy fetches postings. For each one the app reads salary, mode, type, age, seniority and location rules from the text. No AI is used.
+3. **Build** (only when you press it, or tick auto-build). One AI call rewrites your profile for the job description: reorder, drop, reword. Nothing new may be added.
+4. **Guard.** The truth guard compares the result to your profile. A failure rejects the resume and logs the reason in Issues. Then the PDF is rendered with Edge or Chrome and its pages counted; fonts and content are trimmed until it fits.
+5. **Review.** Preview, check "What changed", download, apply yourself.
+
+### Project layout
+
+| Path | Role |
+|---|---|
+| `app/main.py` | FastAPI app, API routes, build queue |
+| `app/resume.py`, `app/guard.py`, `app/diff.py` | Tailoring, truth/page guards, diff |
+| `app/scrape.py`, `app/fetch.py`, `app/details.py`, `app/flags.py` | Job search, page fetch, salary/mode/flag parsing |
+| `app/ai.py`, `app/cover.py` | AI providers, cover letter |
+| `app/db.py`, `app/export.py` | SQLite, PDF/DOCX output |
+| `app/scan.py`, `app/mcp_server.py` | Daily scan, MCP tools |
+| `static/index.html` | The whole UI |
+| `tests/` | Offline test suite (fake scrapers and AI) |
+
+## Setup
 
 Needs Python 3.12+ and Edge or Chrome (used to make the PDF).
 
@@ -30,77 +75,68 @@ copy .env.example .env
 run.bat
 ```
 
-`run.bat` opens http://127.0.0.1:8000.
+`run.bat` opens http://127.0.0.1:8000. On Linux/macOS: `python -m app` (PDF needs Chrome or Chromium on the machine).
 
-## Choose your AI
+### Configuration (`.env`)
 
-Edit `.env`. `AI_PROVIDER=auto` picks the first one available (Claude Code, Anthropic, OpenAI, then Gemini).
-
-| Provider | What you need |
+| Variable | Meaning |
 |---|---|
-| `claude_cli` | [Claude Code](https://claude.com/claude-code) installed and logged in (set `CLAUDE_BIN` if `claude` is not on PATH). No API key. |
-| `anthropic` | `ANTHROPIC_API_KEY` |
-| `openai` | `OPENAI_API_KEY` (not tested end to end) |
-| `gemini` | `GEMINI_API_KEY` (or `GOOGLE_API_KEY`), model via `GEMINI_MODEL` (default `gemini-2.5-flash`). Not tested against the live API. |
+| `GEMINI_API_KEY`, `GEMINI_MODEL` | **Free option.** Get a key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey), no billing needed. |
+| `AI_PROVIDER` | `auto` (first available), `claude_cli`, `anthropic`, `openai`, `gemini` |
+| `CLAUDE_BIN`, `CLAUDE_MODEL` | Claude Code CLI path / model. No API key needed. |
+| `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` | Anthropic API |
+| `OPENAI_API_KEY`, `OPENAI_MODEL` | OpenAI (untested against the live API) |
+| `HOST`, `PORT` | Bind address (default `127.0.0.1:8000`) |
 
-Optional `CLAUDE_MODEL` / `ANTHROPIC_MODEL` / `OPENAI_MODEL` pick a cheaper or faster model. Each resume costs one AI call, so build the jobs you care about instead of everything at once.
+Each resume costs one AI call, so build the jobs you care about instead of everything at once.
 
-## How to use
+## Using it
 
-1. Drop your resume (PDF, DOCX or TXT) on the left. If a PDF has no readable text, use **Paste text**.
-2. Press **Suggest from resume** for job titles, then **Find jobs**. No AI is used yet.
-3. Each job shows how many of your skills it mentions. Press **Build** on the ones you want.
-4. Preview opens when it is ready. Download PDF/DOCX, or open the job's folder.
+1. Drop your resume on the left. If a PDF has no readable text, use **Paste text**.
+2. **Suggest from resume** for titles, then **Find jobs**.
+3. Press **Build** on the jobs you want. Preview opens when ready.
+4. Download PDF/DOCX or open the job's folder. Anything skipped or failed is under **Issues** and in `data/issues.log`.
 
-Anything that was skipped or failed is listed under **Issues** and saved in `data/issues.log`.
-
-Before you apply, each job card shows (read from the posting, no AI): **salary** (board field or text, e.g. `₹12–18 LPA`), work mode, job type, how old it is and warnings like `night shift` / `bond` / `unpaid`. Filters: min salary, salary shown, remote/hybrid/on-site, type, posted date, only my level (hides jobs needing clearly more years than your resume, e.g. 20+), India or remote-if-abroad, matches my resume skills (these three are on by default), hide warnings. A job abroad is shown only if it is remote and not limited to US citizens / clearance. Many postings list no salary; the card then says "salary not listed".
-
-More: **What changed** in the preview (your base resume vs the tailored one), a per-job **Applied / Interview / Rejected / Offer** tracker (set by you only), badges like `5+ yrs` / `US only`, an optional cover letter, **Backup** and **Fix 2-page PDFs** buttons.
-
-## Daily scan (never applies)
+### Daily scan (never applies)
 
 ```
 PUT /api/saved-search   {"terms":["python developer"],"location":"Pune","max_resumes":5}
 scripts\install_daily_task.bat     # Task Scheduler, 09:00 daily
-.venv\Scripts\python -m app.scan   # or run by hand
+python -m app.scan                 # or run by hand
 ```
 
-It finds new jobs and builds at most `max_resumes` resumes, then writes `jobs/_daily.md`. Create `data\STOP` to halt a run.
+Builds at most `max_resumes` resumes and writes `jobs/_daily.md`. Create `data\STOP` to halt a run.
 
-## MCP server
-
-Use Resumeit from Claude Desktop / Claude Code:
+### MCP server
 
 ```
 claude mcp add resumeit -- D:\path\to\resumeit\.venv\Scripts\python.exe -m app.mcp_server
 ```
 
-Tools: `get_profile`, `list_jobs`, `get_job`, `search_jobs`, `estimate_ai_calls`, `build_resume`, `what_changed`, `write_cover_letter`, `run_daily_scan`, `list_issues`. There is deliberately no tool to apply or to set the tracker status.
+Tools: `get_profile`, `list_jobs`, `get_job`, `search_jobs`, `estimate_ai_calls`, `build_resume`, `what_changed`, `write_cover_letter`, `run_daily_scan`, `list_issues`. There is deliberately no tool to apply or to set tracker status.
 
-## Safety
+## Privacy and security
 
-- The server only listens on `127.0.0.1`, and rejects requests whose `Host` is not local (DNS rebinding) or whose `Origin` is another website (so a web page you visit cannot change your jobs). There is still no login: do not expose the port.
-- Uploads are capped at 10 MB. `GET /api/health` shows server, database and AI status.
-- `.env` (keys), `data/` and `jobs/` are git-ignored. Use **Backup** to save them.
+- Everything runs on `127.0.0.1`. Resume, jobs and files live in git-ignored `data/` and `jobs/`. Only the text sent to your chosen AI provider leaves your machine (and Google Fonts load on page open).
+- Requests with a non-local `Host` or a foreign `Origin` are rejected (DNS rebinding / drive-by pages). There is **no login**: do not expose the port to a network.
+- Uploads are capped at 10 MB. `GET /api/health` reports server, database and AI status.
 
-## Tests
-
-CI runs the suite on every push (`.github/workflows/tests.yml`).
-
+## Development
 
 ```
-.venv\Scripts\python -m pytest -q
+pip install -r requirements-dev.txt
+python -m pytest -q          # offline, ~2 min
+python scripts/screenshots.py   # optional: needs playwright + chromium
 ```
 
-Tests use fake scrapers and a fake AI, so they need no network and never touch your `data/` or `jobs/`.
+CI runs the suite on every push.
 
 ## Known limits
 
 - Scraping is fragile: LinkedIn and Naukri block quickly, so some searches return nothing.
-- Windows only for the "open folder" buttons.
-- Read each resume before sending. The truth guard catches invented facts, not a true fact bent out of shape (e.g. "contributed" to "led"). You are the final check.
-- The DOCX page count cannot be verified; only the PDF is checked.
+- The "open folder" buttons are Windows only.
+- The truth guard catches invented facts, not a true fact bent out of shape ("contributed" to "led"). Read each resume before sending.
+- DOCX page count cannot be verified; only the PDF is checked.
 
 ## License
 

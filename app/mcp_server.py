@@ -119,6 +119,8 @@ def what_changed(job_id: int) -> dict:
 def write_cover_letter(job_id: int) -> str:
     """Optional cover letter for one job (one AI call, facts from your resume only). Saved in the job folder."""
     j = _job(job_id)
+    if resume.profile_problem(db.kv_get("profile")):
+        raise ValueError("No usable resume uploaded yet")
     text = cover.generate(db.kv_get("profile"), j)
     db.x("UPDATE jobs SET cover=? WHERE id=?", text, job_id)
     d = export.folder(j)

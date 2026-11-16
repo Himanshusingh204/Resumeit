@@ -4,7 +4,7 @@ Run by hand or from Windows Task Scheduler:  .venv\\Scripts\\python -m app.scan
 Limits come from the saved search (Settings -> PUT /api/saved-search): max_resumes = AI calls per run.
 Create the file data/STOP to make a running scan stop before its next resume.
 """
-import json
+import json, logging
 from datetime import datetime
 
 from . import db, details, export, flags, main, resume, scrape
@@ -86,4 +86,5 @@ def _write(out):
 
 
 if __name__ == "__main__":
-    print(json.dumps(run(), indent=2))
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    logging.getLogger("resumeit").info("scan result %s", json.dumps(run(), indent=2))

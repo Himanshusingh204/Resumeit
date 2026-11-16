@@ -1,4 +1,4 @@
-import io, json, os, re, sqlite3, threading, zipfile
+import hashlib, io, json, logging, os, re, sqlite3, subprocess, sys, tempfile, threading, zipfile
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, wait
 from pathlib import Path
@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from . import ai, cover, db, diff, export, fetch, details, flags, guard, resume, scrape
 
+log = logging.getLogger("resumeit")
 app = FastAPI()
 LOCAL_HOSTS = ("127.0.0.1", "localhost", "testserver")
 MAX_UPLOAD = 10 * 1024 * 1024  # a resume is never bigger than this
@@ -42,17 +43,29 @@ def _pages():
 
 
 def _tailor(jid):
-    job = db.q("SELECT * FROM jobs WHERE id=?", jid)[0]
+    rows = db.q("SELECT * FROM jobs WHERE id=?", jid)
+    if not rows:  # deleted while it waited in the queue
+        return
+    job = rows[0]
     db.x("UPDATE jobs SET status='tailoring', error=NULL WHERE id=?", jid)
     try:
         profile = db.kv_get("profile")
         if resume.profile_problem(profile):  # fail locally, do not spend an AI call on an empty profile
             raise ValueError("resume profile is empty: re-upload your resume")
-        r, m = resume.tailor(profile, job)
-        bad = resume.validate(r, profile)
-        if bad:
-            raise ValueError("incomplete: " + bad)
-        guard.check(r, profile)  # rule 1.2: nothing that is not already in the profile
+        why = None
+        for attempt in (1, 2):  # a rejected answer is retried once, telling the AI what was wrong
+            try:
+                r, m = resume.tailor(profile, job, why)
+                bad = resume.validate(r, profile)
+                if bad:
+                    raise ValueError("incomplete: " + bad)
+                guard.check(r, profile)  # rule 1.2: nothing that is not already in the profile
+                break
+            except ValueError as e:
+                if attempt == 2:
+                    raise
+                why = str(e)
+                log.info("job %s rejected (%s), retrying once", jid, why)
         db.x("UPDATE jobs SET status='done', resume=?, match=?, flag=NULL WHERE id=?", json.dumps(r), json.dumps(m), jid)
         try:  # the resume is already safe in the DB; a disk/PDF problem must not undo that
             _, r2, flag = export.save_fit(job, r, m, db.kv_get("template") or "classic", _pages())
@@ -62,6 +75,7 @@ def _tailor(jid):
         except Exception as e:
             db.issue("export_failed", f"job {jid}: {job['title']} @ {job['company']}", e)
     except Exception as e:
+        log.warning("tailor failed for job %s: %s", jid, e)
         db.x("UPDATE jobs SET status='error', error=? WHERE id=?", str(e)[:500], jid)
         db.issue("tailor_failed", f"job {jid}: {job['title']} @ {job['company']}", e)
 
@@ -94,7 +108,10 @@ def _queue(ids):
     """Tailor only jobs that share at least one skill with the resume; mark the rest 'skipped' (no AI call)."""
     profile, futures = db.kv_get("profile"), []
     for i in ids:
-        job = db.q("SELECT * FROM jobs WHERE id=?", i)[0]
+        rows = db.q("SELECT * FROM jobs WHERE id=?", i)
+        if not rows:
+            continue
+        job = rows[0]
         if resume.relevance(profile, job):
             db.x("UPDATE jobs SET status='queued', error=NULL WHERE id=?", i)
             f = _futs[i] = pool.submit(_tailor, i)
@@ -170,10 +187,14 @@ def set_pages(b: Pages):
 
 
 def _open(path):
-    if not hasattr(os, "startfile"):  # shortcut: Windows only, which is where this tool runs
-        raise HTTPException(501, "Opening folders is only supported on Windows")
     path.mkdir(parents=True, exist_ok=True)
-    os.startfile(path)  # noqa: S606
+    if hasattr(os, "startfile"):
+        os.startfile(path)  # noqa: S606
+    else:
+        try:
+            subprocess.Popen(["open" if sys.platform == "darwin" else "xdg-open", str(path)])
+        except OSError:
+            raise HTTPException(501, f"Could not open the folder here; it is at {path}")
 
 
 @app.post("/api/folder")
@@ -277,6 +298,7 @@ def _run_search(s):
             wait(_queue(ids))
         state["msg"] = f"Done: {len(ids)} new jobs" + ("" if s.auto else ". Pick the ones you want and press Build.")
     except Exception as e:
+        log.exception("search failed")
         state["msg"] = f"Scrape failed: {e}"
     finally:
         state["scraping"] = False
@@ -347,7 +369,7 @@ def add_job(m: Manual):
         except ValueError as e:
             raise HTTPException(422, str(e))
         title, company = title or t, company or c
-    url = m.url or "manual:" + str(abs(hash(desc)))
+    url = m.url or "manual:" + hashlib.sha1(desc.encode()).hexdigest()[:16]  # hash() changes every restart
     if db.q("SELECT 1 FROM jobs WHERE url=?", url):
         raise HTTPException(409, "Job already added")
     jid = db.x("INSERT INTO jobs(url,site,title,company,description) VALUES(?,?,?,?,?)",
@@ -513,12 +535,14 @@ def backup():
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         if db.DB.exists():
-            tmp = db.DB.with_suffix(".bak")
-            src, dst = sqlite3.connect(db.DB), sqlite3.connect(tmp)
-            src.backup(dst)
-            dst.close(); src.close()
-            z.write(tmp, "resumeit.db")
-            tmp.unlink()
+            with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:  # unique per call: parallel backups cannot collide
+                tmp = Path(d) / "resumeit.db"
+                src, dst = sqlite3.connect(db.DB), sqlite3.connect(tmp)
+                try:
+                    src.backup(dst)
+                finally:
+                    dst.close(); src.close()
+                z.write(tmp, "resumeit.db")
         if export.JOBS_DIR.exists():
             for f in export.JOBS_DIR.rglob("*"):
                 if f.is_file():
@@ -542,6 +566,7 @@ def retailor(jid: int):
     f = _futs.pop(jid, None)
     if f:
         f.cancel()  # was waiting in the bulk queue: this click wins
+    db.x("UPDATE jobs SET status='queued', error=NULL WHERE id=?", jid)  # at once, so the page never sees the old state and misses the finish
     fast_pool.submit(_tailor, jid)
     return {"ok": True}
 
@@ -559,6 +584,7 @@ def stop_queue():
 
 @app.put("/api/jobs/{jid}/resume")
 def edit(jid: int, r: dict):
+    job(jid)  # 404 instead of silently saving nothing
     db.x("UPDATE jobs SET resume=? WHERE id=?", json.dumps(r), jid)
     return {"ok": True}
 
@@ -586,7 +612,7 @@ def download(jid: int, fmt: str, t: str = "classic"):
     if not j["resume"]:
         raise HTTPException(409, "Resume not ready")
     r = json.loads(j["resume"])
-    name = re.sub(r"[^\w-]+", "_", f"{r.get('name', 'resume')}_{j['company']}_{j['title']}")[:80]
+    name = re.sub(r"[^\w-]+", "_", f"{r.get('name', 'resume')}_{j['company']}_{j['title']}", flags=re.A)[:80]  # ASCII: headers must be latin-1
     try:
         if fmt == "html":
             return HTMLResponse(resume.render_html(r, t))

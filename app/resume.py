@@ -28,7 +28,7 @@ def extract_terms(profile, n=5):
     """Job-search queries from the resume: titles the candidate fits, most specific first."""
     out = ai.complete_json(
         f"From this candidate profile, give up to {n} short job-board search queries (2-4 words each, e.g. "
-        '"python backend developer") for roles they are qualified for, based on their real titles, skills and '
+        '"staff nurse icu") for roles they are qualified for, based on their real titles, skills and '
         'projects. Most fitting first. Return {"terms": ["..."]}.', json.dumps(profile))
     terms = [t.strip() for t in out.get("terms", []) if isinstance(t, str) and t.strip()]
     return list(dict.fromkeys(terms))[:n]  # dedupe, keep order
@@ -79,9 +79,10 @@ RULES = ("You tailor a candidate's resume to one job description. HARD RULES: us
          "Profile shape: " + SCHEMA)
 
 
-def tailor(profile, job):
+def tailor(profile, job, feedback=None):
     jd = f"{job['title']} at {job['company']}\n\n{job['description']}"[:12000]
-    out = ai.complete_json(RULES, f"CANDIDATE PROFILE:\n{json.dumps(profile)}\n\nJOB DESCRIPTION:\n{jd}")
+    fix = f"\n\nYOUR PREVIOUS ANSWER WAS REJECTED: {feedback}\nFix exactly that. Use only facts already in the profile." if feedback else ""
+    out = ai.complete_json(RULES, f"CANDIDATE PROFILE:\n{json.dumps(profile)}\n\nJOB DESCRIPTION:\n{jd}{fix}")
     return out["resume"], out.get("match", {})
 
 
@@ -89,8 +90,8 @@ def tailor(profile, job):
 BASE = """*{box-sizing:border-box}@page{size:A4;margin:12mm}
 body{margin:0 auto;max-width:790px;padding:26px 30px;color:#1a1a1a}
 h1{margin:0}p{margin:0 0 6px}ul{margin:3px 0 0;padding-left:18px}li{margin:1px 0}
-.row{display:flex;justify-content:space-between;gap:12px}.row .d{white-space:nowrap}
-.item{margin-top:8px;break-inside:avoid}"""
+.row{display:flex;justify-content:space-between;gap:12px}.row .d{white-space:nowrap}.row>span:first-child{min-width:0}
+.item{margin-top:8px;break-inside:avoid}body{overflow-wrap:anywhere}"""  # anywhere: a long URL or word wraps instead of leaving the page
 
 TEMPLATES = {
     # serif, centred, plain rules: the safest layout for applicant tracking systems
@@ -132,8 +133,35 @@ h2{font-size:11pt;font-variant:small-caps;letter-spacing:.1em;font-weight:700;co
 }
 
 
+_BAD = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]|[%s-%s%s%s]" % tuple(map(chr, (0xD800, 0xDFFF, 0xFFFE, 0xFFFF))))  # PDFs leave these behind; they break DOCX/XML and UTF-8 files
+
+
+def _s(v):
+    """Any value -> clean text ('' for None). AI output does not always match the shape asked for, so lists/dicts are flattened."""
+    if isinstance(v, dict):
+        v = v.get("url") or v.get("name") or " ".join(map(str, v.values()))
+    elif isinstance(v, (list, tuple)):
+        v = ", ".join(map(_s, v))
+    return _BAD.sub("", "" if v is None else str(v)).strip()
+
+
+def _strs(v):
+    return [t for t in map(_s, v if isinstance(v, list) else [v]) if t]
+
+
+def _norm(r):
+    """Same resume with every field the right type and free of characters that break rendering. Idempotent; the stored resume is never changed."""
+    r = r if isinstance(r, dict) else {}
+    o = {k: _s(r.get(k)) for k in ("name", "email", "phone", "location", "summary")}
+    o.update(links=_strs(r.get("links")), skills=_strs(r.get("skills")), certifications=_strs(r.get("certifications")))
+    for key, fields in (("experience", ("company", "title", "start", "end")), ("projects", ("name", "tech")), ("education", ("school", "degree", "year"))):
+        o[key] = [{**{f: _s(x.get(f)) for f in fields}, "bullets": _strs(x.get("bullets"))}
+                  for x in (r.get(key) if isinstance(r.get(key), list) else []) if isinstance(x, dict)]
+    return o
+
+
 def _e(s):
-    return html.escape(str(s or ""))
+    return html.escape(_s(s))
 
 
 def _contact(r):
@@ -151,6 +179,7 @@ def _item(left, sub, right, x=None):
 
 
 def render_html(r, template="classic", scale=1.0):
+    r = _norm(r)
     css = BASE + TEMPLATES.get(template, TEMPLATES["classic"]) + (f"html{{zoom:{scale:.3f}}}" if scale != 1.0 else "")
     o = [f"<header><h1>{_e(r.get('name'))}</h1><div class=c>{' &nbsp;|&nbsp; '.join(map(_e, _contact(r)))}</div></header>"]
     if r.get("summary"):
@@ -159,7 +188,7 @@ def render_html(r, template="classic", scale=1.0):
         o.append(f"<h2>Skills</h2><p>{_e(' · '.join(r['skills']))}</p>")
     if r.get("experience"):
         o.append("<h2>Experience</h2>" + "".join(
-            _item(x.get("title"), x.get("company"), f"{x.get('start') or ''} - {x.get('end') or ''}", x) for x in r["experience"]))
+            _item(x.get("title"), x.get("company"), " - ".join(filter(None, (x["start"], x["end"]))), x) for x in r["experience"]))
     if r.get("projects"):
         o.append("<h2>Projects</h2>" + "".join(_item(x.get("name"), x.get("tech"), "", x) for x in r["projects"]))
     if r.get("education"):
@@ -177,7 +206,9 @@ def _browser():
               r"C:\Program Files\Google\Chrome\Application\chrome.exe"):
         if Path(p).exists():
             return p
-    return shutil.which("msedge") or shutil.which("chrome")
+    for n in ("msedge", "chrome", "google-chrome", "chromium", "chromium-browser"):
+        if shutil.which(n):
+            return shutil.which(n)
 
 
 def render_pdf(r, template="classic", scale=1.0):
@@ -187,8 +218,11 @@ def render_pdf(r, template="classic", scale=1.0):
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
         src, out = Path(d) / "r.html", Path(d) / "r.pdf"
         src.write_text(render_html(r, template, scale), encoding="utf-8")
-        subprocess.run([browser, "--headless=new", "--disable-gpu", "--no-pdf-header-footer", f"--user-data-dir={d}/prof",
-                        f"--print-to-pdf={out}", src.as_uri()], check=True, capture_output=True, timeout=60)
+        try:  # DEVNULL: Edge's child processes can hold a pipe open and stall us; if it hangs after writing the PDF, we still use it
+            subprocess.run([browser, "--headless=new", "--disable-gpu", "--no-pdf-header-footer", f"--user-data-dir={d}/prof",
+                            f"--print-to-pdf={out}", src.as_uri()], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
+        except subprocess.TimeoutExpired:
+            pass
         for _ in range(100):  # Edge can exit before the PDF is flushed
             if out.exists() and out.stat().st_size:
                 time.sleep(0.2)
@@ -214,7 +248,7 @@ def _trim_one(r):
         return True
 
     def bullets(keep):
-        c = [x for x in r.get("experience") or [] if len(x.get("bullets") or []) > keep]
+        c = [x for x in r.get("experience") or [] if isinstance(x, dict) and len(x.get("bullets") or []) > keep]
         return pop(max(c, key=lambda x: len(x["bullets"]))["bullets"]) if c else False
 
     skills, projects = r.get("skills") or [], r.get("projects") or []
@@ -288,6 +322,7 @@ def _fit_auto(r, template):
 
 def render_docx(r):
     from docx import Document
+    r = _norm(r)
     d = Document()
     d.add_heading(r.get("name") or "", 0)
     d.add_paragraph(" | ".join(_contact(r)))
@@ -296,8 +331,8 @@ def render_docx(r):
     if r.get("skills"):
         d.add_heading("Skills", 2); d.add_paragraph(", ".join(r["skills"]))
     for key, title, head in (
-            ("experience", "Experience", lambda x: f"{x.get('title')}, {x.get('company')} ({x.get('start')} - {x.get('end')})"),
-            ("projects", "Projects", lambda x: f"{x.get('name')} - {x.get('tech')}")):
+            ("experience", "Experience", lambda x: ", ".join(filter(None, (x["title"], x["company"]))) + (f" ({' - '.join(filter(None, (x['start'], x['end'])))})" if x["start"] or x["end"] else "")),
+            ("projects", "Projects", lambda x: " - ".join(filter(None, (x["name"], x["tech"]))))):
         if r.get(key):
             d.add_heading(title, 2)
             for x in r[key]:
@@ -307,7 +342,7 @@ def render_docx(r):
     if r.get("education"):
         d.add_heading("Education", 2)
         for x in r["education"]:
-            d.add_paragraph(f"{x.get('degree')}, {x.get('school')} {x.get('year') or ''}")
+            d.add_paragraph(f"{', '.join(filter(None, (x['degree'], x['school'])))} {x['year']}".strip())
     if r.get("certifications"):
         d.add_heading("Certifications", 2); d.add_paragraph("; ".join(r["certifications"]))
     buf = io.BytesIO()

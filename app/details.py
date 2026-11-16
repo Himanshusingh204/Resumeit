@@ -101,6 +101,33 @@ def details(text, board=None, title=""):
     return out
 
 
+INDIA = re.compile(
+    r"\bindia\b|bengaluru|bangalore|mumbai|navi mumbai|thane|delhi|\bncr\b|gurgaon|gurugram|noida|ghaziabad|faridabad|pune|hyderabad|"
+    r"secunderabad|chennai|kolkata|ahmedabad|gandhinagar|jaipur|kochi|cochin|trivandrum|thiruvananthapuram|chandigarh|mohali|indore|"
+    r"bhopal|nagpur|coimbatore|lucknow|kanpur|bhubaneswar|vadodara|surat|mysuru|mysore|visakhapatnam|vizag|patna|ranchi|raipur|"
+    r"dehradun|nashik|madurai|mangaluru|mangalore|guwahati|goa\b|,\s*(?:in|ind)\s*$|\b(?:maharashtra|karnataka|tamil nadu|telangana|"
+    r"kerala|gujarat|rajasthan|haryana|uttar pradesh|west bengal|andhra pradesh)\b", re.I)
+
+
+def region(location, site=""):
+    """'india' | 'abroad' | 'unknown' (no place given, or just 'Remote'). Naukri is India-only."""
+    loc = (location or "").strip()
+    if INDIA.search(loc) or (site == "naukri" and not loc):
+        return "india"
+    if not loc or loc.lower() in ("remote", "anywhere", "worldwide", "global", "-"):
+        return "unknown"
+    return "abroad"
+
+
+def location_ok(reg, mode, req):
+    """Your rule: India jobs are fine; a job abroad must be remote (and not tied to US citizens / clearance)."""
+    if reg == "abroad":
+        return mode == "remote" and not (req.get("us_only") or req.get("clearance"))
+    if reg == "unknown":
+        return not (req.get("us_only") or req.get("clearance"))
+    return True
+
+
 def age_days(posted, today=None):
     try:
         return ((today or date.today()) - date.fromisoformat(str(posted)[:10])).days

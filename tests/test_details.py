@@ -78,7 +78,7 @@ def test_jobs_filters():
     assert ids(mode="hybrid") == {b} and ids(mode="remote") == {a}
     assert ids(type="contract") == {c}
     assert ids(max_age_days=7) == {a, c}
-    assert ids(hide_restricted=True) == {a, b}
+    assert ids(india_only=True) == {a, b}  # c is US-citizen only
     row = {x["id"]: x for x in client.get("/api/jobs").json()}
     assert row[b]["tags"] == ["night shift"] and row[a]["salary"] == "₹20–30 LPA"
 
@@ -87,7 +87,7 @@ def test_mcp_list_jobs_shows_salary_and_filters(monkeypatch):
     db.kv_set("profile", PROFILE)
     a = _job("u/a", "Python. ₹20-30 LPA. Remote.")
     _job("u/b", "Python. no pay info")
-    main._score_req(); main._score_info()
+    main._score_fit(); main._score_req(); main._score_info()
     rows = mcp_server.list_jobs(min_salary_lakh=10, work_mode="remote")
     assert [r["id"] for r in rows] == [a] and rows[0]["salary"] == "₹20–30 LPA" and rows[0]["work_mode"] == "remote"
     assert len(mcp_server.list_jobs()) == 2

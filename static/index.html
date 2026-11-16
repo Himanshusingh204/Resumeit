@@ -169,8 +169,9 @@ iframe{width:100%;height:68vh;border:1px solid var(--line);border-radius:8px;bac
     <select id="fmode" class="btn sm" onchange="draw()"><option value="">Any work mode</option><option value="remote">Remote</option><option value="hybrid">Hybrid</option><option value="onsite">On-site</option></select>
     <select id="ftype" class="btn sm" onchange="draw()"><option value="">Any type</option><option value="full-time">Full-time</option><option value="contract">Contract</option><option value="internship">Internship</option><option value="part-time">Part-time</option></select>
     <select id="fage" class="btn sm" onchange="draw()"><option value="0">Any date</option><option value="1">Last 24h</option><option value="3">Last 3 days</option><option value="7">Last week</option></select>
-    <label class="mut"><input type="checkbox" id="hsr" onchange="hideSr=this.checked;draw()"> hide above my level</label>
-    <label class="mut"><input type="checkbox" id="fres" onchange="draw()"> hide US-only / clearance / no sponsorship</label>
+    <label class="mut"><input type="checkbox" id="hsr" checked onchange="hideSr=this.checked;draw()"> only my level (hide 5+, 20+ yrs jobs)</label>
+    <label class="mut"><input type="checkbox" id="fres" checked onchange="draw()"> India, or remote if abroad</label>
+    <label class="mut"><input type="checkbox" id="fskill" checked onchange="draw()"> matches my resume skills</label>
     <label class="mut"><input type="checkbox" id="fwarn" onchange="draw()"> hide warnings (night shift, bond, unpaid...)</label>
   </div>
   <div class="list"><div id="jobs"></div><div class="empty" id="emptyS" hidden></div></div>
@@ -297,14 +298,15 @@ function draw(){const q=$('q').value.toLowerCase(),box=$('jobs');
   for(const [id,c] of cache)if(!keep.has(id)){c.el.remove();cache.delete(id)}
   const e=$('emptyS');e.hidden=l.length>0;
   e.innerHTML=`<b>${jobs.length?'Nothing in this view':'No jobs yet'}</b>${jobs.length?'Try another tab or clear the filter.':profOk?'Press Find jobs on the left.':'Start by reading your resume on the left.'}`}
-let hideSr=false,pid=0;
+let hideSr=true,pid=0;
 function okFilters(j){const ms=parseFloat($('fsal').value);
   if((ms>0||$('fhas').checked)&&j.salary_lakh==null)return false;
   if(ms>0&&j.salary_lakh<ms)return false;
   if($('fmode').value&&j.mode!==$('fmode').value)return false;
   if($('ftype').value&&j.jtype!==$('ftype').value)return false;
   const a=+$('fage').value;if(a&&(j.age_days==null||j.age_days>a))return false;
-  if($('fres').checked&&j.restricted)return false;
+  if($('fres').checked&&!j.location_ok)return false;
+  if($('fskill').checked&&!fitOf(j).length)return false;
   if($('fwarn').checked&&(j.tags||[]).length)return false;
   return true}
 function prev(id,t){pid=id;$('dfv').hidden=true;const j=jobs.find(x=>x.id===id)||{},m=sc(j);$('pmeta').textContent=(m.score!=null?`Match ${m.score}%`:'')+(m.gaps?.length?` · Not in your resume: ${m.gaps.slice(0,6).join(', ')}`:'')+' · Built only from facts in your resume. Read it before sending.';

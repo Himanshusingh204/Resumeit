@@ -333,10 +333,11 @@ HIDDEN_BY_DEFAULT = ("Applied", "Rejected")
 
 @app.get("/api/jobs")
 def jobs(hide_senior: bool = False, track: str = "", min_salary: float = 0, has_salary: bool = False, mode: str = "",
-         type: str = "", max_age_days: int = 0, hide_restricted: bool = False):
+         type: str = "", max_age_days: int = 0, india_only: bool = False, only_my_skills: bool = False):
     """track: '' = everything, 'open' = hide Applied/Rejected, or one of TRACK.
     min_salary: lakh INR per year (USD etc. converted roughly); mode: remote|hybrid|onsite; type: full-time|contract|internship...;
-    hide_restricted hides US-only / clearance / no-sponsorship jobs."""
+    india_only: keep India jobs, and jobs abroad only if they are remote (not US-citizen/clearance only).
+    only_my_skills: keep jobs that mention at least one skill from your resume."""
     rows = db.q("SELECT id,url,site,title,company,location,posted,status,error,match,fit,req,info,flag,track,tracked_at,"
                 "(cover IS NOT NULL) AS has_cover FROM jobs ORDER BY id DESC")
     years = flags.profile_years(db.kv_get("profile"))
@@ -347,7 +348,8 @@ def jobs(hide_senior: bool = False, track: str = "", min_salary: float = 0, has_
         info = details.parse(j.pop("info"))
         j.update(salary=info.get("salary"), salary_lakh=info.get("salary_lakh"), salary_src=info.get("salary_src"),
                  mode=info.get("mode"), jtype=info.get("type"), tags=info.get("tags") or [], age_days=details.age_days(j["posted"]))
-        j["restricted"] = bool(req.get("us_only") or req.get("clearance") or req.get("no_sponsorship"))
+        j["region"] = details.region(j["location"], j["site"])
+        j["location_ok"] = details.location_ok(j["region"], j["mode"], req)
         if hide_senior and j["senior"]:
             continue
         if (has_salary or min_salary) and j["salary_lakh"] is None:
@@ -360,7 +362,9 @@ def jobs(hide_senior: bool = False, track: str = "", min_salary: float = 0, has_
             continue
         if max_age_days and (j["age_days"] is None or j["age_days"] > max_age_days):
             continue
-        if hide_restricted and j["restricted"]:
+        if india_only and not j["location_ok"]:
+            continue
+        if only_my_skills and not json.loads(j["fit"] or "[]"):
             continue
         if track == "open" and j["track"] in HIDDEN_BY_DEFAULT:
             continue
@@ -458,7 +462,7 @@ class SavedSearch(BaseModel):
     max_resumes: int = 5       # hard cap of AI calls per daily run
     hide_senior: bool = True   # do not spend AI calls on jobs above your level
     min_salary_lakh: float = 0  # skip jobs whose KNOWN salary is below this (lakh INR/yr); unknown salary is kept
-    hide_restricted: bool = False  # skip US-only / clearance / no-sponsorship jobs
+    india_only: bool = True     # India jobs, or remote jobs abroad; skip on-site jobs abroad
 
 
 @app.get("/api/saved-search")

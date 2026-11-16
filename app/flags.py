@@ -35,8 +35,6 @@ def labels(req):
     out = []
     if req.get("min_years"):
         out.append(f"{req['min_years']}+ yrs")
-    if req.get("us_only"):
-        out.append("US only")
     if req.get("clearance"):
         out.append("clearance")
     if req.get("no_sponsorship"):
@@ -44,10 +42,13 @@ def labels(req):
     return out
 
 
+SLACK = 1  # a job asking 1 year more than you have is still shown
+
+
 def is_senior(req, have_years):
-    """Needs more years than the profile has. Unknown profile years -> never flagged."""
+    """Needs clearly more years than the profile has (e.g. 20+ yrs). Unknown profile years -> never flagged."""
     n = req.get("min_years")
-    return bool(n) and have_years is not None and n > have_years
+    return bool(n) and have_years is not None and n > have_years + SLACK
 
 
 def parse(raw):

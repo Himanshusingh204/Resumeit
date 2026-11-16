@@ -42,16 +42,17 @@ def get_profile() -> dict:
 
 
 @mcp.tool()
-def list_jobs(status: str = "", hide_senior: bool = False, tracking: str = "open", limit: int = 30, min_salary_lakh: float = 0,
+def list_jobs(status: str = "", hide_senior: bool = True, tracking: str = "open", limit: int = 30, min_salary_lakh: float = 0,
               only_with_salary: bool = False, work_mode: str = "", job_type: str = "", max_age_days: int = 0,
-              hide_restricted: bool = False) -> list[dict]:
+              india_only: bool = True, only_my_skills: bool = True) -> list[dict]:
     """List jobs, newest first. status: new|queued|tailoring|done|error|skipped or empty for all.
     tracking: 'open' (hides Applied/Rejected), '' for everything, or Applied|Interview|Rejected|Offer.
     hide_senior hides jobs that need more years than your resume shows. min_salary_lakh = yearly salary in lakh INR
     (other currencies converted roughly); work_mode remote|hybrid|onsite; job_type full-time|contract|internship;
-    hide_restricted hides US-only / clearance / no-sponsorship jobs. Salary etc. is read from the posting: only a hint."""
+    Defaults match your rules: hide jobs needing clearly more years than your resume, show India jobs (or remote jobs abroad),
+    and only jobs that mention your skills; pass False to see everything. Salary etc. is read from the posting: only a hint."""
     rows = main.jobs(hide_senior=hide_senior, track=tracking, min_salary=min_salary_lakh, has_salary=only_with_salary,
-                     mode=work_mode, type=job_type, max_age_days=max_age_days, hide_restricted=hide_restricted)
+                     mode=work_mode, type=job_type, max_age_days=max_age_days, india_only=india_only, only_my_skills=only_my_skills)
     full = {r["id"]: r for r in db.q("SELECT id,req,info FROM jobs")}
     out = []
     for j in rows:

@@ -191,7 +191,7 @@ def test_zero_or_no_years_does_not_flag_senior():
 def test_location_flags():
     r = flags.requirements("Must be a US citizen. Security clearance required. No visa sponsorship available.")
     assert r["us_only"] and r["clearance"] and r["no_sponsorship"]
-    assert flags.labels(r) == ["US only", "clearance", "no sponsorship"]
+    assert flags.labels(r) == ["clearance", "no sponsorship"]  # no "US only" badge: location is judged by details.region
     assert not any(flags.requirements("Remote, India").values())
 
 
@@ -348,16 +348,16 @@ def test_mcp_list_get_and_build(profile, monkeypatch, job_row):
     jid = job_row(desc="Python and Kubernetes, 9+ years of experience")
     main._score_fit(); main._score_req()
     assert mcp_server.get_profile()["name"] == "Rahul Sen"
-    rows = mcp_server.list_jobs()
+    assert mcp_server.list_jobs() == []  # default: only your level, so 9+ yrs is hidden
+    rows = mcp_server.list_jobs(hide_senior=False)
     assert rows[0]["id"] == jid and rows[0]["your_skills_in_job"] == ["Python"] and "9+ yrs" in rows[0]["flags"]
-    assert mcp_server.list_jobs(hide_senior=True) == []
     assert mcp_server.estimate_ai_calls([jid]) == {"ai_calls": 1, "skipped": 0}
     out = mcp_server.build_resume(jid)
     assert out["status"] == "done"
     g = mcp_server.get_job(jid)
     assert g["resume"]["name"] == "Rahul Sen" and g["match"]["score"] == 70
     assert mcp_server.what_changed(jid)["skills"]["removed"] == []
-    assert g["tracking"] is None and mcp_server.list_jobs(status="done")[0]["id"] == jid
+    assert g["tracking"] is None and mcp_server.list_jobs(status="done", hide_senior=False)[0]["id"] == jid
     with pytest.raises(ValueError):
         mcp_server.get_job(999)
 

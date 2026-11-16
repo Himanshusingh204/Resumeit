@@ -43,13 +43,13 @@ def run(max_resumes=None):
     years = flags.profile_years(profile)
     picks = []
     for jid in ids:
-        j = db.q("SELECT id,fit,req,info FROM jobs WHERE id=?", jid)[0]
+        j = db.q("SELECT id,fit,req,info,location,site FROM jobs WHERE id=?", jid)[0]
         info = details.parse(j["info"])
         if cfg.get("min_salary_lakh") and info.get("salary_lakh") is not None and info["salary_lakh"] < cfg["min_salary_lakh"]:
             out["skipped_filters"] += 1  # only when a salary is known and too low; unknown salary is kept
             continue
-        if cfg.get("hide_restricted") and flags.labels(flags.parse(j["req"])) and any(
-                flags.parse(j["req"]).get(k) for k in ("us_only", "clearance", "no_sponsorship")):
+        if cfg.get("india_only", True) and not details.location_ok(
+                details.region(j["location"], j["site"]), info.get("mode"), flags.parse(j["req"])):
             out["skipped_filters"] += 1
             continue
         if not json.loads(j["fit"] or "[]"):

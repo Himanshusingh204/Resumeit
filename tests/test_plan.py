@@ -474,3 +474,35 @@ def test_rejected_resume_is_retried_once_with_the_reason(profile, monkeypatch, j
     main._tailor(jid)
     assert client.get(f"/api/jobs/{jid}").json()["status"] == "done"
     assert len(users) == 2 and "REJECTED" in users[1] and "Kubernetes" in users[1]
+
+
+# ------------------------------------------------------------------ chat editing
+def _built(job_row, monkeypatch):
+    monkeypatch.setattr(ai, "complete_json", lambda s, u: tailored())
+    jid = job_row()
+    main._tailor(jid)
+    return jid
+
+
+def test_chat_edit_applies_change_and_keeps_user_stated_skill(profile, monkeypatch, job_row):
+    jid = _built(job_row, monkeypatch)
+    monkeypatch.setattr(ai, "complete_json", lambda s, u: {"resume": tailored(skills=["Python", "Tally"], summary="Short.")["resume"], "reply": "Added Tally."})
+    r = client.post(f"/api/jobs/{jid}/chat", json={"message": "add Tally to skills and shorten the summary"})
+    assert r.status_code == 200 and "Tally" in r.json()["resume"]["skills"]
+    assert "Tally" in client.get(f"/api/jobs/{jid}").json()["resume"]
+
+
+def test_chat_edit_rejects_invented_facts_and_keeps_old_resume(profile, monkeypatch, job_row):
+    jid = _built(job_row, monkeypatch)
+    before = client.get(f"/api/jobs/{jid}").json()["resume"]
+    monkeypatch.setattr(ai, "complete_json", lambda s, u: {"resume": tailored(skills=["Python", "Kubernetes"])["resume"], "reply": "ok"})
+    r = client.post(f"/api/jobs/{jid}/chat", json={"message": "make it sound more senior"})  # Kubernetes was not typed by the user
+    assert r.status_code == 422 and "Kubernetes" in r.json()["detail"]
+    assert client.get(f"/api/jobs/{jid}").json()["resume"] == before
+
+
+def test_chat_edit_needs_a_built_resume_and_a_message(profile, job_row):
+    jid = job_row()
+    assert client.post(f"/api/jobs/{jid}/chat", json={"message": "x"}).status_code == 400
+    assert client.post(f"/api/jobs/{jid}/chat", json={"message": "  "}).status_code == 400
+    assert client.post("/api/jobs/9999/chat", json={"message": "x"}).status_code == 404

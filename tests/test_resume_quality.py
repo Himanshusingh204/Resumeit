@@ -91,3 +91,10 @@ def test_real_pdf_stays_within_page_policy(tpl, name, monkeypatch):
         _, pdf, pages, flag = resume.fit_one_page(PROFILES[name], tpl, mode)
         assert pdf[:4] == b"%PDF" and (pages in allowed or flag), (tpl, name, mode, pages)
         assert resume.pdf_pages(pdf) == pages
+
+
+def test_fresher_leads_with_education_and_skills_do_not_split():
+    h = resume.render_html({"name": "N", "skills": ["MS Excel", "Tally ERP 9"], "projects": [{"name": "P", "bullets": ["b"]}],
+                            "education": [{"degree": "B.Com", "school": "U", "year": "2024"}]})
+    assert h.index("<h2>Education") < h.index("<h2>Projects") and "Experience" not in h
+    assert "<span style='white-space:nowrap'>MS Excel</span>" in h

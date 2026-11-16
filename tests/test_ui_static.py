@@ -34,6 +34,7 @@ def test_no_ai_error_tells_you_how_to_get_the_free_key(monkeypatch):
     for k in ("AI_PROVIDER", "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY"):
         monkeypatch.delenv(k, raising=False)
     monkeypatch.setattr(ai, "_claude_bin", lambda: None)
+    monkeypatch.setattr(ai, "_opencode_bin", lambda: None)
     with pytest.raises(RuntimeError, match="No AI configured") as e:
         ai.provider()
     assert "aistudio.google.com/apikey" in str(e.value)
@@ -46,3 +47,9 @@ def test_rebuild_shows_queued_at_once_so_the_page_does_not_miss_the_finish(monke
     db.x("UPDATE jobs SET status='done' WHERE id=?", jid)
     assert client.post(f"/api/jobs/{jid}/tailor").status_code == 200
     assert db.q("SELECT status FROM jobs WHERE id=?", jid)[0]["status"] == "queued"
+
+
+def test_preview_has_a_chat_panel():
+    html = (Path(__file__).resolve().parent.parent / "static" / "index.html").read_text(encoding="utf-8")
+    for token in ('id="chl"', 'role="log"', 'id="chm"', 'id="chf"', "/chat`", 'for="chm"'):
+        assert token in html, token

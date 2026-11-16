@@ -91,3 +91,46 @@ def test_relevance_matches_whole_skills_only():
     hit = resume.relevance(p, {"title": "Dev", "description": "python, C++ and JavaScript on mysql"})
     assert hit == ["Python", "C++"]  # not Java (JavaScript) and not SQL (mysql)
     assert resume.relevance(p, {"title": "Chef", "description": "kitchen"}) == []
+
+
+ACCOUNTS = {"name": "Neha Verma", "skills": ["MS Excel (VLOOKUP, Pivot Tables)", "Tally ERP 9", "GST"],
+            "certifications": ["Tally Prime Certification"],
+            "experience": [{"company": "Fake Traders", "title": "Accounts Executive", "start": "2023", "end": "2024",
+                            "bullets": ["Handled accounts payable and bank reconciliation", "Filed GST returns and TDS"]}]}
+LOGISTICS = {"name": "Ravi Rao", "skills": ["Supply Chain", "SAP MM", "C"],
+             "experience": [{"company": "Fake Logistics", "title": "Logistics Coordinator", "start": "2015", "end": "2024",
+                             "bullets": ["Prepared import/export documentation and e-way bills", "Controlled inventory in the warehouse"]}]}
+
+
+def _hits(p, desc, title=""):
+    return resume.relevance(p, {"title": title, "description": desc})
+
+
+def test_non_tech_aliases_and_phrases_match():
+    assert set(_hits(ACCOUNTS, "Need Microsoft Excel, Tally Prime, GST and accounts payable experience")) >= {
+        "MS Excel", "Tally ERP 9", "GST", "Accounts Payable"}
+    assert "Bank Reconciliation" in _hits(ACCOUNTS, "bank reconciliations daily")           # plural
+    assert "TDS" in _hits(ACCOUNTS, "TDS filing")                                          # found in bullets, not in skills
+    assert "Accounts Executive" in _hits(ACCOUNTS, "Hiring an accounts executive")         # job title phrase
+    assert set(_hits(LOGISTICS, "SAP, inventory control, EXIM documentation, eway bill, supply-chain")) >= {
+        "Supply Chain", "SAP MM", "Inventory Management", "Import Export Documentation", "E-Way Bill"}
+
+
+def test_short_terms_need_word_boundaries():
+    assert "C" in _hits(LOGISTICS, "knowledge of C, Java")
+    assert "C" not in _hits(LOGISTICS, "Crew scheduling, Excel and R&D, c++, accounts")
+    assert _hits({"skills": ["R"]}, "strategy and research") == [] and _hits({"skills": ["R"]}, "R and Python") == ["R"]
+    assert _hits(ACCOUNTS, "Gstreamer pipelines") == []
+
+
+def test_parse_profile_enriches_skills_from_text_and_prompts_for_all(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(resume.ai, "complete_json", lambda s, u: seen.update(s=s) or {"name": "N", "skills": ["Tally"]})
+    p = resume.parse_profile("Used Tally Prime, GST filing and import export documentation daily")
+    assert {"Tally", "GST", "Import Export Documentation"} <= set(p["skills"]) and p["skills"].count("Tally") == 1
+    assert "EVERY skill" in seen["s"] and "never add" in seen["s"]
+
+
+def test_extract_terms_falls_back_to_titles(monkeypatch):
+    monkeypatch.setattr(resume.ai, "complete_json", lambda s, u: {"terms": []})
+    assert resume.extract_terms(ACCOUNTS) == ["Accounts Executive"]

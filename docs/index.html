@@ -86,7 +86,7 @@ run.bat                     # opens http://127.0.0.1:8000</code></pre>
 <table><tr><th>Provider</th><th>Needs</th><th>Notes</th></tr>
 <tr><td><span class="tag">claude_cli</span></td><td><code>CLAUDE_BIN</code> or <code>claude</code> on PATH</td><td>Uses your logged-in Claude Code. No key. Tested.</td></tr>
 <tr><td><span class="tag">anthropic</span></td><td><code>ANTHROPIC_API_KEY</code></td><td>Model via <code>ANTHROPIC_MODEL</code>.</td></tr>
-<tr><td><span class="tag">gemini</span></td><td><code>GEMINI_API_KEY</code></td><td>Model via <code>GEMINI_MODEL</code> (default gemini-2.5-flash). Request/response shape tested with a fake; live call not tested.</td></tr>
+<tr><td><span class="tag">gemini</span></td><td><code>GEMINI_API_KEY</code></td><td>Model via <code>GEMINI_MODEL</code> (default gemini-3.1-flash-lite, falls back to other free models). Tested live with a free key.</td></tr>
 <tr><td><span class="tag">openai</span></td><td><code>OPENAI_API_KEY</code></td><td>Model via <code>OPENAI_MODEL</code>. Selection logic tested, live call not.</td></tr></table></section>
 
 <section id="guards"><h2>Guards &amp; tracker</h2><p>Rules from the plan, enforced in code and covered by tests.</p>

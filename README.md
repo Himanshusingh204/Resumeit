@@ -82,7 +82,8 @@ run.bat
 | Variable | Meaning |
 |---|---|
 | `GEMINI_API_KEY`, `GEMINI_MODEL` | **Free option.** Get a key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey), no billing needed. |
-| `AI_PROVIDER` | `auto` (first available), `claude_cli`, `anthropic`, `openai`, `gemini` |
+| `AI_PROVIDER` | `auto` (first available), `claude_cli`, `anthropic`, `openai`, `gemini`, `opencode` |
+| `OPENCODE_BIN`, `OPENCODE_MODEL` | [OpenCode](https://opencode.ai) CLI, free models, no key. Model as `provider/model`; empty = its default. |
 | `CLAUDE_BIN`, `CLAUDE_MODEL` | Claude Code CLI path / model. No API key needed. |
 | `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` | Anthropic API |
 | `OPENAI_API_KEY`, `OPENAI_MODEL` | OpenAI (untested against the live API) |

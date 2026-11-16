@@ -42,6 +42,7 @@ def test_gemini_request_and_response(clean_env, monkeypatch):
 
     class R:
         text = ""
+        status_code = 200
         def raise_for_status(self): pass
         def json(self): return {"candidates": [{"content": {"parts": [{"text": '{"ok": '}, {"text": "true}"}]}}]}
 
@@ -59,6 +60,7 @@ def test_gemini_request_and_response(clean_env, monkeypatch):
 def test_gemini_blocked_answer_is_a_clear_error(clean_env, monkeypatch):
     class R:
         text = "{}"
+        status_code = 200
         def raise_for_status(self): pass
         def json(self): return {"promptFeedback": {"blockReason": "SAFETY"}}
     monkeypatch.setattr(ai.httpx, "post", lambda *a, **k: R())
@@ -66,6 +68,22 @@ def test_gemini_blocked_answer_is_a_clear_error(clean_env, monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "k")
     with pytest.raises(RuntimeError, match="gemini returned no text"):
         ai.complete("s", "u")
+
+
+def test_gemini_falls_back_when_model_is_retired(clean_env, monkeypatch):
+    urls = []
+
+    class R:
+        text = ""
+        def __init__(self, code): self.status_code = code
+        def raise_for_status(self): pass
+        def json(self): return {"candidates": [{"content": {"parts": [{"text": "hi"}]}}]}
+
+    monkeypatch.setattr(ai.httpx, "post", lambda url, **k: urls.append(url) or R(404 if len(urls) == 1 else 200))
+    monkeypatch.setenv("AI_PROVIDER", "gemini")
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+    monkeypatch.setenv("GEMINI_MODEL", "old-model")
+    assert ai.complete("s", "u") == "hi" and "old-model" in urls[0] and ai.GEMINI_FALLBACKS[0] in urls[1]
 
 
 def test_explicit_provider_wins(clean_env, monkeypatch):
@@ -77,3 +95,25 @@ def test_explicit_provider_wins(clean_env, monkeypatch):
 def test_no_provider_gives_clear_error(clean_env):
     with pytest.raises(RuntimeError, match="No AI configured"):
         ai.provider()
+
+
+def test_opencode_runs_with_prompt_file_and_strips_banner(clean_env, monkeypatch):
+    seen = {}
+
+    def run(cmd, **kw):
+        seen.update(cmd=cmd, cwd=kw["cwd"])
+        seen["prompt"] = open(cmd[cmd.index("--file") + 1], encoding="utf-8").read()
+        return type("P", (), {"returncode": 0, "stdout": "\x1b[0m\n> build \u00b7 free\n{\"ok\": true}\n", "stderr": ""})()
+
+    monkeypatch.setattr(ai.subprocess, "run", run)
+    monkeypatch.setenv("AI_PROVIDER", "opencode")
+    monkeypatch.setenv("OPENCODE_BIN", "opencode")
+    assert ai.complete_json("sys", "user text") == {"ok": True}
+    assert "sys" in seen["prompt"] and "user text" in seen["prompt"] and "--model" not in seen["cmd"]
+
+
+def test_opencode_is_last_in_auto_order(clean_env, monkeypatch):
+    monkeypatch.setenv("OPENCODE_BIN", "opencode")
+    assert ai.provider() == "opencode"
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+    assert ai.provider() == "gemini"

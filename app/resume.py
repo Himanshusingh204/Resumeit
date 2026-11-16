@@ -19,18 +19,166 @@ def extract_text(name, data):
     return data.decode("utf-8", "ignore")
 
 
+# ---------------------------------------------------------------- keywords (field-agnostic, no AI)
+# Each row is one concept: the first entry is the display name, all entries are accepted spellings of it.
+TERMS = [t.split("|") for t in (
+    # accounts / finance / tax
+    "Excel|ms excel|microsoft excel|advanced excel|ms-excel", "MS Office|microsoft office|office 365|ms word|microsoft word|powerpoint|ms powerpoint",
+    "Tally|tally erp|tally erp 9|tally prime|tallyprime", "GST|goods and services tax|gst returns|gstr", "TDS|tax deducted at source",
+    "SAP|sap erp|sap fico|sap mm|sap sd|sap hana|sap s/4hana", "QuickBooks|quick books", "Zoho Books|zoho", "Busy Accounting|busy software",
+    "Accounts Payable|account payable|a/p|creditors", "Accounts Receivable|account receivable|a/r|debtors", "Bank Reconciliation|bank reco|reconciliation",
+    "Financial Reporting|mis reporting|mis reports|mis", "Balance Sheet|trial balance|profit and loss|p&l", "Journal Entries|general ledger|ledger",
+    "Taxation|income tax|vat|tax filing", "Audit|auditing|internal audit|statutory audit", "Budgeting|budget|forecasting", "Payroll|salary processing",
+    "Invoicing|invoice processing|billing|invoices", "Cash Flow|working capital", "Financial Analysis|financial modelling|financial modeling",
+    "Costing|cost accounting|cost control", "Accounting|bookkeeping|book keeping", "VLOOKUP|hlookup|xlookup", "Pivot Table|pivot tables|pivot",
+    "ERP|enterprise resource planning", "Chartered Accountant|ca inter|cma|icwa", "B.Com|bcom|bachelor of commerce", "MBA|master of business administration",
+    # supply chain / logistics / operations
+    "Supply Chain|supply chain management|scm", "Logistics", "Inventory Management|inventory control|stock management|inventory", "Warehouse Management|warehousing|warehouse|wms",
+    "Import Export Documentation|import export|export import|exim|import/export", "Customs Clearance|customs|custom clearance", "Freight Forwarding|freight|shipping",
+    "E-Way Bill|eway bill|e way bill", "Procurement|purchasing", "Vendor Management|vendor development|supplier management", "Purchase Order|purchase orders|po processing",
+    "Dispatch|dispatching", "Transportation|transport management|fleet management", "3PL|third party logistics", "Demand Planning|production planning|ppc", "Quality Control|quality assurance|qa/qc",
+    "Lean|six sigma|kaizen", "Letter of Credit|bill of lading|packing list|shipping bill",
+    # sales / marketing / hr / support
+    "Sales|business development|lead generation", "Customer Service|customer support|client servicing|customer relationship", "CRM|salesforce|hubspot",
+    "Negotiation|negotiations", "Recruitment|talent acquisition|hiring", "Onboarding|employee engagement|hr operations", "Training|learning and development",
+    "SEO|search engine optimization", "Social Media|social media marketing|smm", "Content Writing|copywriting|content creation", "Digital Marketing|performance marketing",
+    "Project Management|project coordination|program management", "Stakeholder Management|stakeholder", "Data Entry", "Reporting|report preparation",
+    "Compliance|regulatory compliance|statutory compliance", "Documentation|record keeping|record maintenance",
+    # healthcare / education / design
+    "Patient Care|nursing", "Teaching|lesson planning|classroom management", "AutoCAD|auto cad", "Communication|communication skills",
+    # tech
+    "Python", "Java", "JavaScript|js|ecmascript", "TypeScript", "C++", "C#", "C", "R", "Go|golang", "SQL|t-sql|pl/sql", "NoSQL",
+    "React|react.js|reactjs", "Node.js|nodejs|node js", "Angular", "Vue|vue.js", "HTML", "CSS", "FastAPI", "Django", "Flask", "Spring Boot|springboot", "REST API|rest apis|restful",
+    "AWS|amazon web services", "Azure", "GCP|google cloud", "Docker", "Kubernetes|k8s", "Git|github|gitlab", "Linux", "CI/CD|jenkins|github actions", "Terraform",
+    "Machine Learning|ml", "Deep Learning", "Data Analysis|data analytics", "Power BI|powerbi", "Tableau", "Pandas", "NumPy", "TensorFlow", "PyTorch", "Android",
+)]
+_SEP = r"[\s\-./&]*"
+_EDGE_L, _EDGE_R = r"(?<![A-Za-z0-9+#])", r"(?![A-Za-z0-9+#])"
+
+
+def _tok(s):
+    return re.findall(r"[a-z0-9+#]+", s.lower())
+
+
+_GROUP = {}
+for _i, _row in enumerate(TERMS):
+    for _v in _row:
+        _GROUP.setdefault(" ".join(_tok(_v)), _i)
+
+
+def _word(w):
+    if len(w) > 3 and w.endswith("y"):
+        return re.escape(w[:-1]) + "(?:y|ies)"
+    if len(w) > 3 and w.endswith("s") and not w.endswith("ss"):
+        w = w[:-1]
+    return re.escape(w) + ("(?:s|es)?" if len(w) > 2 else "")
+
+
+def _rx(variant):
+    t = _tok(variant)
+    if not t:
+        return re.compile(r"(?!)")
+    if len("".join(t)) <= 2:  # 'C', 'R', 'AP': exact case, and never inside words, C++ or R&D
+        return re.compile(r"(?<![\w+#&])" + re.escape(re.sub(r"[^A-Za-z0-9+#]", "", variant)) + r"(?![\w+#&])")
+    return re.compile(_EDGE_L + _SEP.join(map(_word, t)) + _EDGE_R, re.I)
+
+
+def _concept(term):
+    """(group key, [regexes]) for one keyword; a known concept accepts all its spellings."""
+    key = " ".join(_tok(term))
+    g = _GROUP.get(key)
+    if g is None:  # 'Tally ERP 9 (2019)' -> drop version numbers; 'SAP FICO' -> brand head
+        base = " ".join(w for w in key.split() if not re.fullmatch(r"v?\d[\d.]*", w))
+        g = _GROUP.get(base)
+        if g is None and base.split()[:1] in (["sap"], ["tally"]):
+            g = _GROUP[base.split()[0]]
+    if g is not None:
+        return ("g", g), [_rx(v) for v in TERMS[g]]
+    return ("t", key), [_rx(term)]
+
+
+def _pieces(skill):
+    """'MS Excel (VLOOKUP, Pivot)' -> 3 keywords; 'Python, SQL' -> 2; 'HTML/CSS' -> 2."""
+    out = []
+    for part in re.split(r"[;|,]", re.sub(r"[()\[\]]", ",", _s(skill))):
+        part = part.strip(" -:.")
+        subs = part.split("/")
+        out += subs if len(subs) > 1 and all(" " not in x.strip() for x in subs) else [part]
+    return [x.strip() for x in out if x.strip()]
+
+
+def _text(v):
+    if isinstance(v, dict):
+        return " ".join(_text(x) for x in v.values())
+    return " ".join(map(_text, v)) if isinstance(v, list) else ("" if v is None else str(v))
+
+
+def profile_keywords(profile):
+    """Every skill/tool/certification/title/domain keyword the resume itself contains (nothing invented):
+    its explicit lists first, then known terms that appear anywhere in the resume text. -> [(display, regexes)]."""
+    p = profile or {}
+    raw = list(p.get("skills") or []) + list(p.get("certifications") or [])
+    for x in p.get("projects") or []:
+        raw += [x.get("tech")] if isinstance(x, dict) else []
+    for x in p.get("experience") or []:  # multi-word titles only: 'Developer' alone would match every job
+        t = _s(x.get("title")) if isinstance(x, dict) else ""
+        if len(t.split()) > 1:
+            raw.append(t)
+    out, seen = [], set()
+
+    def add(display, concept):
+        if display and concept[0] not in seen:
+            seen.add(concept[0])
+            out.append((display, concept[1]))
+
+    for r in raw:
+        for piece in _pieces(r):
+            add(piece, _concept(piece))
+    blob = _text({k: v for k, v in p.items() if k not in ("email", "phone", "links")})
+    for i, row in enumerate(TERMS):
+        if ("g", i) not in seen and any(rx.search(blob) for rx in map(_rx, row)):
+            add(row[0], _concept(row[0]))
+    return out
+
+
+def relevance(profile, job):
+    """Profile keywords that appear in the job text. Empty = job has nothing to do with the resume."""
+    text = f"{job.get('title') or ''} {job.get('description') or ''}"
+    return [d for d, rxs in profile_keywords(profile) if any(rx.search(text) for rx in rxs)]
+
+
+def enrich_skills(profile, text, cap=25):
+    """Add known terms found in the resume TEXT but missing from the AI's skills list (the AI often lists only a few)."""
+    have = {_concept(p)[0] for s in profile.get("skills") or [] for p in _pieces(s)}
+    add = [row[0] for i, row in enumerate(TERMS) if ("g", i) not in have and any(rx.search(text) for rx in map(_rx, row))]
+    if add:
+        profile["skills"] = [*(profile.get("skills") or []), *add[:cap]]
+    return profile
+
+
 def parse_profile(text):
-    return ai.complete_json("You convert a resume into structured JSON. Copy facts exactly; never add anything. "
-                            "Use this shape (use empty values if absent): " + SCHEMA, text[:20000])
+    p = ai.complete_json(
+        "You convert a resume into structured JSON. Copy facts exactly; never add anything that is not written in the resume. "
+        "Be COMPLETE: in `skills` list EVERY skill, tool, software, system, technique, language and domain keyword the resume "
+        "mentions anywhere (skills section, experience, projects, education), whatever the field - e.g. Tally, GST, SAP, MS Excel, "
+        "supply chain, inventory management, accounts payable, import/export documentation, customer service, Python, SQL. "
+        "Keep each as a short name (1-4 words), one per item, no duplicates, no sentences. Put licences and courses in `certifications`. "
+        "Keep every job, project and degree. Use this shape (use empty values if absent): " + SCHEMA, text[:20000])
+    return enrich_skills(p, text[:20000]) if isinstance(p, dict) else p
 
 
 def extract_terms(profile, n=5):
     """Job-search queries from the resume: titles the candidate fits, most specific first."""
+    kw = [d for d, _ in profile_keywords(profile)][:25]
     out = ai.complete_json(
         f"From this candidate profile, give up to {n} short job-board search queries (2-4 words each, e.g. "
-        '"staff nurse icu") for roles they are qualified for, based on their real titles, skills and '
-        'projects. Most fitting first. Return {"terms": ["..."]}.', json.dumps(profile))
-    terms = [t.strip() for t in out.get("terms", []) if isinstance(t, str) and t.strip()]
+        '"staff nurse icu", "accounts executive tally gst", "logistics coordinator") for roles they are qualified for, '
+        "in THEIR field (any field, not only tech), based on their real titles, skills, tools, certifications and projects. "
+        "Fresher: use their degree and skills. Most fitting first. Return {\"terms\": [\"...\"]}. "
+        "Key skills found in the resume: " + ", ".join(kw), json.dumps(profile))
+    terms = [t.strip() for t in (out.get("terms") or []) if isinstance(t, str) and t.strip()]
+    if not terms:  # AI gave nothing: fall back to the candidate's own latest title
+        terms = [_s(x.get("title")) for x in profile.get("experience") or [] if isinstance(x, dict) and _s(x.get("title"))]
     return list(dict.fromkeys(terms))[:n]  # dedupe, keep order
 
 
@@ -41,13 +189,6 @@ def profile_problem(p):
     if not (p.get("skills") or p.get("experience") or p.get("projects")):
         return "no skills or experience found"
     return None
-
-
-def relevance(profile, job):
-    """Profile skills that literally appear in the job text. Empty = job has nothing to do with the resume."""
-    text = f"{job.get('title') or ''} {job.get('description') or ''}"
-    return [s for s in profile.get("skills") or []
-            if s and re.search(r"(?<![\w+#])" + re.escape(s.strip()) + r"(?![\w+#])", text, re.I)]
 
 
 def validate(r, profile):
@@ -79,6 +220,31 @@ RULES = ("You tailor a candidate's resume to one job description. HARD RULES: us
          "Profile shape: " + SCHEMA)
 
 
+CHAT_RULES = ("You edit ONE tailored resume exactly as the candidate asks in their message (reorder, shorten, reword, "
+              "drop or emphasise things, add a skill or number the candidate states in the message). HARD RULES: keep "
+              "everything else unchanged; use ONLY facts from the candidate profile or stated in the message; never invent "
+              "employers, titles, dates, degrees, projects or numbers; keep name, email and phone; keep it recruiter-ready "
+              "and short enough for one page. If the request cannot be done without inventing something, change nothing "
+              'and say why in the reply. Return JSON: {"resume": <the full resume, same shape as given>, '
+              '"reply": "one short sentence saying what you changed"}. Resume shape: ' + SCHEMA)
+
+
+def chat_edit(profile, current, message, job):
+    """One chat turn: returns (new resume, reply). The caller must run guard on the result with allowed_for_chat()."""
+    jd = f"{job['title']} at {job['company']}\n\n{job['description'] or ''}"[:6000]
+    out = ai.complete_json(CHAT_RULES, f"CANDIDATE PROFILE:\n{json.dumps(profile)}\n\nJOB:\n{jd}\n\n"
+                                       f"CURRENT RESUME:\n{json.dumps(current)}\n\nCANDIDATE MESSAGE:\n{message}")
+    return out["resume"], str(out.get("reply") or "Done.")[:300]
+
+
+def allowed_for_chat(profile, r, message):
+    """The profile plus what the candidate typed themselves: a skill they name and numbers they write are their own facts.
+    Companies, projects and degrees can not be added from chat (edit the profile for that)."""
+    msg = message.lower()
+    extra = [s for s in r.get("skills") or [] if isinstance(s, str) and s.strip() and s.strip().lower() in msg]
+    return {**profile, "skills": [*(profile.get("skills") or []), *extra], "user_note": message}
+
+
 def tailor(profile, job, feedback=None):
     jd = f"{job['title']} at {job['company']}\n\n{job['description']}"[:12000]
     fix = f"\n\nYOUR PREVIOUS ANSWER WAS REJECTED: {feedback}\nFix exactly that. Use only facts already in the profile." if feedback else ""
@@ -91,7 +257,7 @@ BASE = """*{box-sizing:border-box}@page{size:A4;margin:12mm}
 body{margin:0 auto;max-width:790px;padding:26px 30px;color:#1a1a1a}
 h1{margin:0}p{margin:0 0 6px}ul{margin:3px 0 0;padding-left:18px}li{margin:1px 0}
 .row{display:flex;justify-content:space-between;gap:12px}.row .d{white-space:nowrap}.row>span:first-child{min-width:0}
-.item{margin-top:8px;break-inside:avoid}body{overflow-wrap:anywhere}"""  # anywhere: a long URL or word wraps instead of leaving the page
+.item{margin-top:9px;break-inside:avoid}h2+.item{margin-top:0}li{overflow-wrap:anywhere}body{overflow-wrap:anywhere}"""  # anywhere: a long URL or word wraps instead of leaving the page
 
 TEMPLATES = {
     # serif, centred, plain rules: the safest layout for applicant tracking systems
@@ -184,16 +350,14 @@ def render_html(r, template="classic", scale=1.0):
     o = [f"<header><h1>{_e(r.get('name'))}</h1><div class=c>{' &nbsp;|&nbsp; '.join(map(_e, _contact(r)))}</div></header>"]
     if r.get("summary"):
         o.append(f"<h2>Summary</h2><p>{_e(r['summary'])}</p>")
-    if r.get("skills"):
-        o.append(f"<h2>Skills</h2><p>{_e(' · '.join(r['skills']))}</p>")
-    if r.get("experience"):
-        o.append("<h2>Experience</h2>" + "".join(
-            _item(x.get("title"), x.get("company"), " - ".join(filter(None, (x["start"], x["end"]))), x) for x in r["experience"]))
-    if r.get("projects"):
-        o.append("<h2>Projects</h2>" + "".join(_item(x.get("name"), x.get("tech"), "", x) for x in r["projects"]))
-    if r.get("education"):
-        o.append("<h2>Education</h2>" + "".join(
-            _item(x.get("degree"), x.get("school"), x.get("year")) for x in r["education"]))
+    if r.get("skills"):  # short skills never break mid-name ("MS / Excel"); a very long one may still wrap
+        o.append("<h2>Skills</h2><p>" + " &middot; ".join(f"<span style='white-space:nowrap'>{_e(k)}</span>" if len(k) <= 30 else _e(k) for k in r["skills"]) + "</p>")
+    exp = ("<h2>Experience</h2>" + "".join(_item(x.get("title"), x.get("company"), " - ".join(filter(None, (x["start"], x["end"]))), x)
+                                            for x in r["experience"])) if r.get("experience") else ""
+    proj = ("<h2>Projects</h2>" + "".join(_item(x.get("name"), x.get("tech"), "", x) for x in r["projects"])) if r.get("projects") else ""
+    edu = ("<h2>Education</h2>" + "".join(_item(x.get("degree"), x.get("school"), x.get("year")) for x in r["education"])) if r.get("education") else ""
+    # a fresher with no experience leads with education, the way recruiters expect
+    o += [exp, proj, edu] if r.get("experience") else [edu, proj]
     if r.get("certifications"):
         o.append(f"<h2>Certifications</h2><p>{_e('; '.join(r['certifications']))}</p>")
     return (f"<!doctype html><meta charset=utf-8><title>{_e(r.get('name'))} - Resume</title>"

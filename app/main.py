@@ -589,6 +589,40 @@ def edit(jid: int, r: dict):
     return {"ok": True}
 
 
+class Chat(BaseModel):
+    message: str
+
+
+@app.post("/api/jobs/{jid}/chat")
+def chat(jid: int, b: Chat):
+    """Edit a built resume by talking to it. Same truth guard and one-page fit as a normal build; nothing is saved if either fails."""
+    j = job(jid)
+    msg = b.message.strip()[:2000]
+    if not msg:
+        raise HTTPException(400, "Write what to change")
+    if not j.get("resume"):
+        raise HTTPException(400, "Build this resume first")
+    profile = db.kv_get("profile") or {}
+    try:
+        r, reply = resume.chat_edit(profile, json.loads(j["resume"]), msg, j)
+        bad = resume.validate(r, profile)
+        if bad:
+            raise ValueError("that change would leave the resume incomplete: " + bad)
+        guard.check(r, resume.allowed_for_chat(profile, r, msg))
+    except ValueError as e:  # includes the guard's rejection: show it, keep the old resume
+        raise HTTPException(422, str(e))
+    except RuntimeError as e:
+        raise HTTPException(502, str(e))
+    match = json.loads(j["match"]) if j.get("match") else {}
+    try:
+        _, r2, flag = export.save_fit(j, r, match, db.kv_get("template") or "classic", _pages())
+    except Exception as e:  # the PDF is a convenience; keep the edit
+        db.issue("export_failed", f"job {jid}: {j['title']} @ {j['company']}", e)
+        r2, flag = r, None
+    db.x("UPDATE jobs SET resume=?, flag=? WHERE id=?", json.dumps(r2), flag, jid)
+    return {"reply": reply, "resume": r2, "flag": flag}
+
+
 @app.delete("/api/jobs")
 def clear_jobs(status: str = ""):
     """status=error clears failed jobs; empty clears every job."""

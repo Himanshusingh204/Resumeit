@@ -78,7 +78,16 @@ claude mcp add resumeit -- D:\path\to\resumeit\.venv\Scripts\python.exe -m app.m
 
 Tools: `get_profile`, `list_jobs`, `get_job`, `search_jobs`, `estimate_ai_calls`, `build_resume`, `what_changed`, `write_cover_letter`, `run_daily_scan`, `list_issues`. There is deliberately no tool to apply or to set the tracker status.
 
+## Safety
+
+- The server only listens on `127.0.0.1`, and rejects requests whose `Host` is not local (DNS rebinding) or whose `Origin` is another website (so a web page you visit cannot change your jobs). There is still no login: do not expose the port.
+- Uploads are capped at 10 MB. `GET /api/health` shows server, database and AI status.
+- `.env` (keys), `data/` and `jobs/` are git-ignored. Use **Backup** to save them.
+
 ## Tests
+
+CI runs the suite on every push (`.github/workflows/tests.yml`).
+
 
 ```
 .venv\Scripts\python -m pytest -q

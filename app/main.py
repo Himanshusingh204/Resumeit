@@ -7,12 +7,27 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 from fastapi import FastAPI, HTTPException, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Response
+from urllib.parse import urlparse
 from pydantic import BaseModel
 
 from . import ai, cover, db, diff, export, fetch, details, flags, guard, resume, scrape
 
 app = FastAPI()
+LOCAL_HOSTS = ("127.0.0.1", "localhost", "testserver")
+MAX_UPLOAD = 10 * 1024 * 1024  # a resume is never bigger than this
+
+
+@app.middleware("http")
+async def local_only(request, call_next):
+    """The app has no login, so it must only answer the local browser. Blocks DNS-rebinding (foreign Host header)
+    and other websites making your browser POST/PUT/DELETE to localhost (foreign Origin)."""
+    if (request.headers.get("host") or "").rsplit(":", 1)[0].strip("[]").lower() not in LOCAL_HOSTS:
+        return PlainTextResponse("Forbidden host", 403)
+    origin = request.headers.get("origin")
+    if request.method not in ("GET", "HEAD", "OPTIONS") and origin and (urlparse(origin).hostname or "") not in LOCAL_HOSTS:
+        return PlainTextResponse("Forbidden origin", 403)
+    return await call_next(request)
 db.init()
 pool = ThreadPoolExecutor(2)       # bulk queue (search / "build all"); shortcut: 2 parallel AI calls
 fast_pool = ThreadPoolExecutor(2)  # single clicks never wait behind a long bulk queue
@@ -113,6 +128,17 @@ def index():
     return FileResponse(Path(__file__).parent.parent / "static" / "index.html")
 
 
+@app.get("/api/health")
+def health():
+    """For a quick check that the server, database and AI setting are fine."""
+    try:
+        db.q("SELECT 1")
+        ok = True
+    except Exception:
+        ok = False
+    return {"ok": ok, "ai": _ai_name(), "jobs": db.q("SELECT count(*) n FROM jobs")[0]["n"] if ok else None}
+
+
 @app.get("/api/profile")
 def get_profile():
     p = db.kv_get("profile")
@@ -183,7 +209,12 @@ def _save_profile(text):
 @app.post("/api/profile/upload")
 async def upload(f: UploadFile):
     try:
-        text = resume.extract_text(f.filename or "", await f.read())
+        data = await f.read(MAX_UPLOAD + 1)
+        if len(data) > MAX_UPLOAD:
+            raise HTTPException(413, "File is larger than 10 MB. Use a smaller file or 'Paste text'.")
+        text = resume.extract_text(f.filename or "", data)
+    except HTTPException:
+        raise
     except Exception as e:  # corrupt, empty or password-protected file
         raise HTTPException(422, f"Could not open this file ({type(e).__name__}). Try a DOCX/TXT or 'Paste text'.")
     return _save_profile(text)

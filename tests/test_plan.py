@@ -434,3 +434,30 @@ def test_default_policy_is_auto_and_can_be_switched():
 
 def test_prompt_asks_for_strong_bullets_and_allows_two_pages_when_relevant():
     assert "action verb" in resume.RULES and "TWO pages" in resume.RULES and "Never pad" in resume.RULES
+
+
+# ------------------------------------------------------------------ production hardening
+def test_health_endpoint():
+    r = client.get("/api/health").json()
+    assert r["ok"] is True and "ai" in r and r["jobs"] == 0
+
+
+def test_foreign_host_is_blocked_dns_rebinding():
+    assert client.get("/api/health", headers={"host": "evil.example.com"}).status_code == 403
+    assert client.get("/api/health", headers={"host": "127.0.0.1:8000"}).status_code == 200
+    assert client.get("/api/health", headers={"host": "localhost:8000"}).status_code == 200
+
+
+def test_foreign_origin_cannot_change_data_but_can_be_ignored_on_reads(job_row):
+    jid = job_row()
+    bad = {"origin": "https://evil.example.com"}
+    assert client.delete(f"/api/jobs/{jid}", headers=bad).status_code == 403
+    assert client.post(f"/api/jobs/{jid}/track", json={"status": "Applied"}, headers=bad).status_code == 403
+    assert client.get(f"/api/jobs/{jid}", headers=bad).status_code == 200  # reads carry no side effects
+    assert client.delete(f"/api/jobs/{jid}", headers={"origin": "http://127.0.0.1:8000"}).status_code == 200
+
+
+def test_oversized_upload_is_rejected(monkeypatch):
+    monkeypatch.setattr(main, "MAX_UPLOAD", 100)
+    r = client.post("/api/profile/upload", files={"f": ("r.txt", b"x" * 500)})
+    assert r.status_code == 413 and "10 MB" in r.json()["detail"]

@@ -322,7 +322,7 @@ def test_backup_zip_has_db_and_jobs(profile, job_row):
 
 def test_run_bat_does_not_start_a_second_server():
     bat = (export.Path(__file__).resolve().parent.parent / "run.bat").read_text()
-    assert "8000" in bat and "LISTENING" in bat and bat.index("LISTENING") < bat.index("-m app")
+    assert "PORT" in bat and "LISTENING" in bat and bat.index("LISTENING") < bat.index("-m app")
 
 
 @pytest.mark.skipif(not __import__("os").getenv("OPENAI_API_KEY"), reason="needs OPENAI_API_KEY")

@@ -44,10 +44,10 @@ footer{padding:48px 0 96px;color:var(--mut);font-size:13px;border-top:1px solid 
 @media(max-width:820px){.wrap{grid-template-columns:1fr;gap:0}nav{display:none}header{padding-top:48px}section{padding:56px 0}}
 @media(prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}}
 </style></head><body><div class="wrap">
-<nav><b>Resumeit</b><a href="#overview">Overview</a><a href="#flow">How it flows</a><a href="#start">Quick start</a><a href="#folder">Jobs folder</a><a href="#ai">AI providers</a><a href="#failures">Failure handling</a><a href="#api">API</a><a href="#data">Data model</a><a href="#tests">Tests</a><a href="#limits">Limits &amp; risks</a></nav>
+<nav><b>Resumeit</b><a href="#overview">Overview</a><a href="#flow">How it flows</a><a href="#start">Quick start</a><a href="#folder">Jobs folder</a><a href="#ai">AI providers</a><a href="#guards">Guards &amp; tracker</a><a href="#scan">Daily scan</a><a href="#mcp">MCP server</a><a href="#failures">Failure handling</a><a href="#api">API</a><a href="#data">Data model</a><a href="#tests">Tests</a><a href="#limits">Limits &amp; risks</a></nav>
 <main>
 <header><div class="eyebrow">Single-user · Local-first</div><h1>Resumeit</h1>
-<p class="lead">Upload one resume. Resumeit reads your keywords, scrapes the job boards for matching roles, and builds a separate, truthful, tailored resume for every job description.</p></header>
+<p class="lead">Upload one resume. Resumeit reads your keywords, scrapes the job boards for matching roles, and builds a separate, truthful, one-page tailored resume for the jobs you choose. You always apply yourself.</p></header>
 
 <section id="overview"><h2>Overview</h2><p>A private tool that runs on your own PC. No accounts, no cloud, no database server. Everything lives in one SQLite file.</p>
 <div class="grid">
@@ -62,8 +62,8 @@ footer{padding:48px 0 96px;color:var(--mut);font-size:13px;border-top:1px solid 
 <div><b>Scrape</b><span>for each term × each board</span></div>
 <div><b>Store</b><span>dedupe by URL, skip jobs with no JD</span></div>
 <div class="hl"><b>Tailor</b><span>profile + JD → resume + match</span></div>
-<div><b>Validate</b><span>reject incomplete output</span></div>
-<div><b>Export</b><span>PDF · DOCX · HTML</span></div></div>
+<div><b>Guards</b><span>incomplete / invented facts rejected</span></div>
+<div><b>Export</b><span>fit to 1 page · PDF · DOCX · HTML</span></div></div>
 <div class="callout ok"><b>Truthfulness rule</b>The tailoring prompt may only reorder, select and reword facts already in your profile. Requirements you do not meet are reported as <code>gaps</code>, never invented.</div></section>
 
 <section id="start"><h2>Quick start</h2><p>Windows, Python 3.12+. Edge or Chrome is used for PDF export.</p>
@@ -88,13 +88,39 @@ run.bat                     # opens http://127.0.0.1:8000</code></pre>
 <tr><td><span class="tag">anthropic</span></td><td><code>ANTHROPIC_API_KEY</code></td><td>Model via <code>ANTHROPIC_MODEL</code>.</td></tr>
 <tr><td><span class="tag">openai</span></td><td><code>OPENAI_API_KEY</code></td><td>Model via <code>OPENAI_MODEL</code>. Selection logic tested, live call not.</td></tr></table></section>
 
+<section id="guards"><h2>Guards &amp; tracker</h2><p>Rules from the plan, enforced in code and covered by tests.</p>
+<table><tr><th>What</th><th>How it works</th></tr>
+<tr><td>Truth guard</td><td>After the AI answers, every skill, company, title, date, degree, certification, project and every number must already exist in your profile. Otherwise the job is <code>error</code> with the reason, and nothing is saved. It cannot catch a fact turned around (&quot;contributed&quot; to &quot;led&quot;), so use <b>What changed</b> in the preview.</td></tr>
+<tr><td>One page</td><td>The AI is told to stay short. The PDF is then page-counted: type shrinks (never below 9&nbsp;pt), then the least relevant project, bullet or skill is dropped (never added). If it still does not fit, the job shows <b>Manual trim needed</b> and an Issues entry. DOCX page count cannot be checked. <b>Fix 2-page PDFs</b> re-fits old resumes with no AI call.</td></tr>
+<tr><td>Applied tracker</td><td>Per-job dropdown: Applied, Interview, Rejected, Offer. Set only by you; the app, the daily scan and the MCP server never change it. Applied/Rejected leave the default list and appear under the <b>Applied</b> tab.</td></tr>
+<tr><td>Level and location flags</td><td>Read from the job text without AI: <code>5+ yrs</code>, <code>US only</code>, <code>clearance</code>, <code>no sponsorship</code>. <b>hide above my level</b> hides jobs needing more years than your resume shows. Only a hint; nothing is deleted.</td></tr>
+<tr><td>What changed</td><td>Preview button: removed skills/bullets, reworded bullets (with the original) and dropped projects against your base resume.</td></tr>
+<tr><td>Cover letter</td><td>Optional button per job, one AI call, same truth rule (numbers must be in your profile). Saved as <code>cover_letter.md</code> in the job folder.</td></tr>
+<tr><td>Model</td><td><code>CLAUDE_MODEL</code> (Claude Code), <code>ANTHROPIC_MODEL</code>, <code>OPENAI_MODEL</code> in <code>.env</code>. <b>Build matching</b> asks with the exact AI-call count first.</td></tr>
+<tr><td>Backup</td><td><b>Backup</b> button downloads a zip of the database and <code>jobs/</code>.</td></tr></table></section>
+
+<section id="scan"><h2>Daily scan</h2><p>Finds new jobs and prepares resumes. It never applies, submits or messages anyone.</p>
+<pre><code>PUT /api/saved-search   {"terms":["python developer"],"location":"Pune","max_resumes":5,"hide_senior":true}
+scripts\install_daily_task.bat      # Windows Task Scheduler, 09:00 daily
+.venv\Scripts\python -m app.scan    # or run it by hand</code></pre>
+<p>Limits: at most <code>max_resumes</code> AI calls per run, only for jobs that share a skill with your resume, and (by default) not above your level. Create <code>data\STOP</code> to halt a run before its next resume. Each run appends a summary to <code>jobs/_daily.md</code>. Remove the schedule with <code>schtasks /Delete /TN ResumeitDailyScan /F</code>.</p></section>
+
+<section id="mcp"><h2>MCP server</h2><p>Lets Claude Desktop or Claude Code use Resumeit as a tool. It works on the same local database, no web server needed.</p>
+<pre><code>claude mcp add resumeit -- D:\path\to\resumeit\.venv\Scripts\python.exe -m app.mcp_server</code></pre>
+<table><tr><th>Tool</th><th>What</th></tr>
+<tr><td><code>get_profile</code>, <code>list_jobs</code>, <code>get_job</code>, <code>list_issues</code></td><td>Read your resume, jobs (with flags and fit), failures</td></tr>
+<tr><td><code>search_jobs</code></td><td>Scrape boards, store new jobs. No AI</td></tr>
+<tr><td><code>estimate_ai_calls</code>, <code>build_resume</code>, <code>what_changed</code>, <code>write_cover_letter</code></td><td>One resume or letter per call, with all guards</td></tr>
+<tr><td><code>run_daily_scan</code></td><td>The daily scan, capped by <code>max_resumes</code></td></tr></table>
+<div class="callout ok"><b>No apply tool, by design</b>There is no tool to apply to a job or to set Applied/Interview/Rejected/Offer. A test fails if one is added.</div></section>
+
 <section id="failures"><h2>Failure handling</h2><p>The rule: skip it, keep going, and write down what was skipped.</p>
 <table><tr><th>Issue kind</th><th>When</th><th>Effect</th></tr>
 <tr><td><code>scrape_failed</code></td><td>A board raised (429, captcha, network)</td><td>That term × board skipped; others continue</td></tr>
 <tr><td><code>no_results</code></td><td>A board returned nothing</td><td>Logged so you can tell blocked from empty</td></tr>
 <tr><td><code>incomplete_jobs</code></td><td>Job missing URL or description</td><td>Job not stored; count logged</td></tr>
 <tr><td><code>keywords_failed</code></td><td>AI could not extract terms</td><td>Run stops with a message; type terms manually</td></tr>
-<tr><td><code>tailor_failed</code></td><td>AI error, or resume dropped name / experience / skills</td><td>Job marked <code>error</code>; <b>redo</b> button retries</td></tr></table>
+<tr><td><code>tailor_failed</code></td><td>AI error, incomplete resume, or the truth guard found an invented fact</td><td>Job marked <code>error</code>; <b>redo</b> button retries</td></tr></table>
 <p>Issues are visible in the UI (<b>Skipped / incomplete</b>) and appended to <code>data/issues.log</code> as tab-separated lines.</p></section>
 
 <section id="api"><h2>API</h2><p>Local only, bound to 127.0.0.1.</p>
@@ -108,30 +134,36 @@ run.bat                     # opens http://127.0.0.1:8000</code></pre>
 <tr><td>GET/POST</td><td><code>/api/jobs</code></td><td>List jobs / add one by pasted JD</td></tr>
 <tr><td>POST/DELETE</td><td><code>/api/jobs/{id}/tailor</code> · <code>/api/jobs/{id}</code></td><td>Rebuild resume / delete job</td></tr>
 <tr><td>GET</td><td><code>/api/jobs/{id}/resume.pdf|docx|html</code></td><td>Download tailored resume</td></tr>
-<tr><td>GET/DELETE</td><td><code>/api/issues</code></td><td>Read / clear the issues log</td></tr></table></section>
+<tr><td>GET/DELETE</td><td><code>/api/issues</code></td><td>Read / clear the issues log</td></tr>
+<tr><td>GET</td><td><code>/api/jobs?hide_senior=true&amp;track=open</code></td><td>Filter by level / tracker (<code>open</code> hides Applied and Rejected)</td></tr>
+<tr><td>POST</td><td><code>/api/jobs/{id}/track</code></td><td>You set Applied / Interview / Rejected / Offer</td></tr>
+<tr><td>GET</td><td><code>/api/jobs/{id}/diff</code></td><td>What changed vs your base resume</td></tr>
+<tr><td>POST</td><td><code>/api/jobs/{id}/cover-letter</code> · <code>/api/jobs/refit</code> · <code>/api/estimate</code></td><td>Optional cover letter / re-fit built resumes to 1 page / AI calls a build would use</td></tr>
+<tr><td>GET/PUT</td><td><code>/api/saved-search</code></td><td>Settings for the daily scan</td></tr>
+<tr><td>GET</td><td><code>/api/backup</code></td><td>Zip of database and jobs folder</td></tr></table></section>
 
 <section id="data"><h2>Data model</h2><p>SQLite at <code>data/resumeit.db</code>. Back it up by copying the file.</p>
 <table><tr><th>Table</th><th>Columns</th></tr>
 <tr><td><code>kv</code></td><td>k, v: holds the <code>profile</code> JSON</td></tr>
-<tr><td><code>jobs</code></td><td>id, url (unique), site, title, company, location, posted, description, status (<code>new|tailoring|done|error</code>), error, resume (JSON), match (JSON), created</td></tr>
+<tr><td><code>jobs</code></td><td>id, url (unique), site, title, company, location, posted, description, status (<code>new|queued|tailoring|done|error|skipped</code>), error, resume (JSON), match (JSON), fit, req (level/location flags), flag (manual trim), track + tracked_at (your tracker), cover, created</td></tr>
 <tr><td><code>issues</code></td><td>id, ts, kind, ref, msg</td></tr></table>
 <h3>Profile shape</h3><pre><code>{ name, email, phone, location, links[], summary, skills[],
   experience[{company,title,start,end,bullets[]}],
   projects[{name,tech,bullets[]}], education[{school,degree,year}], certifications[] }</code></pre></section>
 
-<section id="tests"><h2>Tests</h2><p>63 tests, no network, no AI, no real browser scraping. Each test uses its own empty SQLite file.</p>
+<section id="tests"><h2>Tests</h2><p>Over 100 tests, no network, no AI, no scraping. One test makes a real PDF with Edge/Chrome and checks it is exactly one page. Each test uses its own empty SQLite file.</p>
 <pre><code>.venv\Scripts\python -m pytest -q</code></pre>
 <table><tr><th>File</th><th>Covers</th></tr>
 <tr><td><code>test_scrape.py</code></td><td>Storing, URL dedupe, one board failing, empty boards, jobs without JD, Naukri rules, log file</td></tr>
 <tr><td><code>test_resume.py</code></td><td>Validation, keyword dedupe/cap, HTML escaping, DOCX/PDF output, file text extraction, tailor input</td></tr>
 <tr><td><code>test_ai.py</code></td><td>JSON extraction from messy replies, provider auto-selection order, missing config error</td></tr>
-<tr><td><code>test_api.py</code></td><td>Full search flow, manual vs auto terms, keyword failure, one tailor failing, incomplete resume rejected, downloads, concurrency guard</td></tr></table></section>
+<tr><td><code>test_api.py</code></td><td>Full search flow, manual vs auto terms, keyword failure, one tailor failing, incomplete resume rejected, downloads, concurrency guard</td></tr><tr><td><code>test_plan.py</code></td><td>Truth guard, one-page fit, tracker (and that nothing sets it automatically), level flags, what-changed, daily scan limits, cover letter, backup, MCP tools</td></tr></table></section>
 
 <section id="limits"><h2>Limits &amp; risks</h2>
 <div class="callout"><b>Scraping is fragile</b>LinkedIn and Naukri block quickly. Expect <code>no_results</code> or <code>scrape_failed</code> entries; proxies are not wired in.</div>
-<div class="callout"><b>Read before you send</b>Output is validated for completeness, not for truth. Skim each resume for rewording you would not stand behind.</div>
+<div class="callout"><b>Read before you send</b>The truth guard catches new facts, not a fact bent out of shape. Use <b>What changed</b> and read each resume.</div>
 <div class="callout"><b>Cost and speed</b>One AI call per job, two in parallel. Large searches use proportionally more of your Claude / API quota.</div>
-<div class="callout"><b>Not covered</b>Authentication (local only by design), a live OpenAI call, and browser-level UI tests.</div></section>
+<div class="callout"><b>Not covered</b>Authentication (local only by design), a live OpenAI call (the test runs only when <code>OPENAI_API_KEY</code> is set), and browser-level UI tests.</div></section>
 <footer>Resumeit · built on the JobSpy approach from Linkit, reduced to a single-user local tool.</footer>
 </main></div><script>
 const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.08});

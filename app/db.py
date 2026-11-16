@@ -16,8 +16,10 @@ def init():
           created TEXT DEFAULT CURRENT_TIMESTAMP, fit TEXT);
         CREATE TABLE IF NOT EXISTS issues(
           id INTEGER PRIMARY KEY, ts TEXT DEFAULT CURRENT_TIMESTAMP, kind TEXT, ref TEXT, msg TEXT);""")
-        if "fit" not in [r[1] for r in c.execute("PRAGMA table_info(jobs)")]:  # DB created before this column existed
-            c.execute("ALTER TABLE jobs ADD COLUMN fit TEXT")
+        have = [r[1] for r in c.execute("PRAGMA table_info(jobs)")]
+        for col in ("fit", "req", "flag", "track", "tracked_at", "cover"):  # columns added after first release
+            if col not in have:
+                c.execute(f"ALTER TABLE jobs ADD COLUMN {col} TEXT")
 
 
 def _run(sql, a):

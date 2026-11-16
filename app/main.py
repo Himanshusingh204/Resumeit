@@ -1,4 +1,5 @@
-import json, os, re, threading
+import io, json, os, re, sqlite3, threading, zipfile
+from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, wait
 from pathlib import Path
 
@@ -9,7 +10,7 @@ from fastapi import FastAPI, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, Response
 from pydantic import BaseModel
 
-from . import ai, db, export, fetch, resume, scrape
+from . import ai, cover, db, diff, export, fetch, flags, guard, resume, scrape
 
 app = FastAPI()
 db.init()
@@ -31,9 +32,13 @@ def _tailor(jid):
         bad = resume.validate(r, profile)
         if bad:
             raise ValueError("incomplete: " + bad)
-        db.x("UPDATE jobs SET status='done', resume=?, match=? WHERE id=?", json.dumps(r), json.dumps(m), jid)
+        guard.check(r, profile)  # rule 1.2: nothing that is not already in the profile
+        db.x("UPDATE jobs SET status='done', resume=?, match=?, flag=NULL WHERE id=?", json.dumps(r), json.dumps(m), jid)
         try:  # the resume is already safe in the DB; a disk/PDF problem must not undo that
-            export.save(job, r, m, db.kv_get("template") or "classic")
+            _, r2, flag = export.save_fit(job, r, m, db.kv_get("template") or "classic")
+            db.x("UPDATE jobs SET resume=?, flag=? WHERE id=?", json.dumps(r2), flag, jid)  # r2 = trimmed to one page
+            if flag:
+                db.issue("manual_trim", f"job {jid}: {job['title']} @ {job['company']}", flag)
         except Exception as e:
             db.issue("export_failed", f"job {jid}: {job['title']} @ {job['company']}", e)
     except Exception as e:
@@ -46,9 +51,16 @@ def _score_fit(ids=None):
     profile = db.kv_get("profile")
     if resume.profile_problem(profile):
         return
-    rows = db.q("SELECT id,title,description FROM jobs WHERE id IN (%s)" % ",".join(map(str, ids))) if ids else         db.q("SELECT id,title,description FROM jobs WHERE fit IS NULL")
+    rows = db.q("SELECT id,title,description FROM jobs WHERE id IN (%s)" % ",".join(map(str, ids))) if ids else \
+        db.q("SELECT id,title,description FROM jobs WHERE fit IS NULL")
     for j in rows:
         db.x("UPDATE jobs SET fit=? WHERE id=?", json.dumps(resume.relevance(profile, j)), j["id"])
+
+
+def _score_req():
+    """Free: years / US-only / clearance / sponsorship read from each new job's text (needs no profile)."""
+    for j in db.q("SELECT id,description FROM jobs WHERE req IS NULL"):
+        db.x("UPDATE jobs SET req=? WHERE id=?", json.dumps(flags.requirements(j["description"])), j["id"])
 
 
 def _queue(ids):
@@ -80,6 +92,7 @@ def _ai_name():
 
 
 _score_fit()  # jobs scraped before the fit column existed
+_score_req()
 
 
 @app.get("/")
@@ -201,6 +214,7 @@ def _run_search(s):
             state["msg"] = f"Scraping {i}/{len(terms)}: {t}"
             ids += scrape.scrape(t, s.location, s.country, s.sites, s.results, s.hours_old, s.remote)
         _score_fit(ids)
+        _score_req()
         state["msg"] = f"{len(ids)} new jobs" + (", building resumes..." if s.auto else "")
         if s.auto:
             wait(_queue(ids))
@@ -281,13 +295,153 @@ def add_job(m: Manual):
         raise HTTPException(409, "Job already added")
     jid = db.x("INSERT INTO jobs(url,site,title,company,description) VALUES(?,?,?,?,?)",
                url, "manual", title or "Job", company or "-", desc)
+    _score_req()
     fast_pool.submit(_tailor, jid)
     return {"id": jid}
 
 
+TRACK = ("Applied", "Interview", "Rejected", "Offer")
+HIDDEN_BY_DEFAULT = ("Applied", "Rejected")
+
+
 @app.get("/api/jobs")
-def jobs():
-    return db.q("SELECT id,url,site,title,company,location,posted,status,error,match,fit FROM jobs ORDER BY id DESC")
+def jobs(hide_senior: bool = False, track: str = ""):
+    """track: '' = everything, 'open' = hide Applied/Rejected, or one of TRACK."""
+    rows = db.q("SELECT id,url,site,title,company,location,posted,status,error,match,fit,req,flag,track,tracked_at,"
+                "(cover IS NOT NULL) AS has_cover FROM jobs ORDER BY id DESC")
+    years = flags.profile_years(db.kv_get("profile"))
+    out = []
+    for j in rows:
+        req = flags.parse(j.pop("req"))
+        j["flags"], j["senior"] = flags.labels(req), flags.is_senior(req, years)
+        if hide_senior and j["senior"]:
+            continue
+        if track == "open" and j["track"] in HIDDEN_BY_DEFAULT:
+            continue
+        if track in TRACK and j["track"] != track:
+            continue
+        out.append(j)
+    return out
+
+
+class Track(BaseModel):
+    status: str = ""  # one of TRACK, or "" to clear
+
+
+@app.post("/api/jobs/{jid}/track")
+def set_track(jid: int, b: Track):
+    """The ONLY way a job becomes Applied/Interview/...: you press the button. The app never calls this itself."""
+    job(jid)
+    if b.status and b.status not in TRACK:
+        raise HTTPException(400, "status must be one of " + ", ".join(TRACK) + " or empty")
+    db.x("UPDATE jobs SET track=?, tracked_at=? WHERE id=?",
+         b.status or None, datetime.now().strftime("%Y-%m-%d %H:%M") if b.status else None, jid)
+    return {"ok": True}
+
+
+@app.get("/api/jobs/{jid}/diff")
+def job_diff(jid: int):
+    j = job(jid)
+    if not j["resume"]:
+        raise HTTPException(409, "Resume not ready")
+    return diff.diff(db.kv_get("profile") or {}, json.loads(j["resume"]))
+
+
+@app.post("/api/jobs/{jid}/cover-letter")
+def cover_letter(jid: int):
+    """Optional, only when you ask. One AI call, facts from your profile only."""
+    _need_profile()
+    j = job(jid)
+    try:
+        text = cover.generate(db.kv_get("profile"), j)
+    except Exception as e:
+        db.issue("cover_failed", f"job {jid}: {j['title']} @ {j['company']}", e)
+        raise HTTPException(422, str(e))
+    db.x("UPDATE jobs SET cover=? WHERE id=?", text, jid)
+    try:
+        d = export.folder(j)
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "cover_letter.md").write_text(text, encoding="utf-8")
+    except Exception as e:
+        db.issue("export_failed", f"job {jid} cover letter", e)
+    return {"cover": text}
+
+
+def _refit(jid):
+    """Re-render an already built resume to one page. No AI call; only removes content."""
+    j = db.q("SELECT * FROM jobs WHERE id=?", jid)[0]
+    try:
+        _, r2, flag = export.save_fit(j, json.loads(j["resume"]), flags.parse(j["match"]), db.kv_get("template") or "classic")
+        db.x("UPDATE jobs SET resume=?, flag=? WHERE id=?", json.dumps(r2), flag, jid)
+        if flag:
+            db.issue("manual_trim", f"job {jid}: {j['title']} @ {j['company']}", flag)
+    except Exception as e:
+        db.issue("export_failed", f"job {jid}: refit", e)
+
+
+@app.post("/api/jobs/refit")
+def refit_all():
+    """Fix resumes built before the one-page guard existed. No AI calls."""
+    ids = [r["id"] for r in db.q("SELECT id FROM jobs WHERE status='done' AND resume IS NOT NULL")]
+    for i in ids:
+        pool.submit(_refit, i)
+    return {"queued": len(ids)}
+
+
+class Ids(BaseModel):
+    ids: list[int] = []
+
+
+@app.post("/api/estimate")
+def estimate(b: Ids):
+    """How many AI calls a Build of these jobs would use (jobs sharing no skill with your resume are skipped free)."""
+    profile = db.kv_get("profile") or {}
+    rows = [r for i in b.ids for r in db.q("SELECT title,description FROM jobs WHERE id=?", i)]
+    n = sum(1 for r in rows if resume.relevance(profile, r))
+    return {"ai_calls": n, "skipped": len(rows) - n}
+
+
+class SavedSearch(BaseModel):
+    terms: list[str] = []
+    location: str = ""
+    country: str = "in"
+    sites: list[str] = ["indeed", "linkedin", "naukri"]
+    results: int = 20
+    hours_old: int = 24
+    remote: bool = False
+    max_resumes: int = 5       # hard cap of AI calls per daily run
+    hide_senior: bool = True   # do not spend AI calls on jobs above your level
+
+
+@app.get("/api/saved-search")
+def get_saved_search():
+    return db.kv_get("saved_search") or {}
+
+
+@app.put("/api/saved-search")
+def put_saved_search(b: SavedSearch):
+    db.kv_set("saved_search", b.model_dump())
+    return b
+
+
+@app.get("/api/backup")
+def backup():
+    """Zip of the database (a consistent copy) and the jobs/ folder."""
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        if db.DB.exists():
+            tmp = db.DB.with_suffix(".bak")
+            src, dst = sqlite3.connect(db.DB), sqlite3.connect(tmp)
+            src.backup(dst)
+            dst.close(); src.close()
+            z.write(tmp, "resumeit.db")
+            tmp.unlink()
+        if export.JOBS_DIR.exists():
+            for f in export.JOBS_DIR.rglob("*"):
+                if f.is_file():
+                    z.write(f, "jobs/" + f.relative_to(export.JOBS_DIR).as_posix())
+    return Response(buf.getvalue(), media_type="application/zip", headers={
+        "Content-Disposition": f'attachment; filename="resumeit_backup_{datetime.now():%Y%m%d_%H%M}.zip"'})
 
 
 @app.get("/api/jobs/{jid}")

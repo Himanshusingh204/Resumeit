@@ -44,7 +44,16 @@ Tailored resume me **sirf wahi facts** aayenge jo tumhare base resume (profile) 
 | Queue: Stop queue, single Build queue skip karta hai | chal raha hai |
 | Fail/skip hui cheezein Issues me aur `data/issues.log` me | chal raha hai |
 | Light/dark/auto theme, graphite design | chal raha hai |
-| 66 automatic tests | pass |
+| Truth guard (code) + 1-page guard + "Fix 2-page PDFs" (A) | chal raha hai |
+| Applied tracker, hand-set only (B) | chal raha hai |
+| Seniority / US-only / clearance flags + "hide above my level" (C) | chal raha hai |
+| "What changed" view (D) | chal raha hai |
+| Daily scan `python -m app.scan` + Task Scheduler script (E) | chal raha hai |
+| Optional cover letter (F) | chal raha hai |
+| `CLAUDE_MODEL`, AI-call estimate (G) | chal raha hai |
+| `run.bat` guard, backup, docs, OpenAI live test (skips without key) (H) | chal raha hai (OpenAI live test key milne par) |
+| MCP server `python -m app.mcp_server` (no apply / no tracker tool) | chal raha hai |
+| Automatic tests (100+) | pass |
 
 ### Jo data me dikha (is plan ki wajah)
 - 76 PDFs me se **36 do page ki** hain (lagbhag aadhi). Rule 1.3 isliye pehle.
@@ -139,11 +148,12 @@ Order: **A, B, C** ek saath (sabse zaroori), phir D, E, phir F, G, H.
 
 ## 6. Kaam ka order (checklist)
 
-- [ ] A. Truth guard + 1 page guard (+ purane 2-page wale rebuild)
-- [ ] B. Applied tracker
-- [ ] C. Seniority/location flag
-- [ ] D. "Kya badla" view
-- [ ] E. Roz ka auto-scan (apply nahi)
-- [ ] F. Cover letter (optional)
-- [ ] G. `CLAUDE_MODEL` option
-- [ ] H. `run.bat` guard, docs update, backup, OpenAI test
+- [x] A. Truth guard + 1 page guard (+ purane 2-page wale rebuild)
+- [x] B. Applied tracker
+- [x] C. Seniority/location flag
+- [x] D. "Kya badla" view
+- [x] E. Roz ka auto-scan (apply nahi)
+- [x] F. Cover letter (optional)
+- [x] G. `CLAUDE_MODEL` option
+- [x] H. `run.bat` guard, docs update, backup (OpenAI live test likhi hai, key milne par chalegi)
+- [x] MCP server (`app/mcp_server.py`): jobs dekho/dhundo/resume banao. Apply ya tracker status ka tool **jaan-bujhkar nahi** hai (rule 1.1)

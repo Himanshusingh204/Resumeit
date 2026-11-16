@@ -24,7 +24,8 @@ def fresh_db(tmp_path, monkeypatch):
 def isolated_export(tmp_path, monkeypatch):
     """Tests write to a temp jobs/ folder and skip the slow real PDF (one test uses the real browser)."""
     monkeypatch.setattr(export, "JOBS_DIR", tmp_path / "jobs")
-    monkeypatch.setattr(resume, "render_pdf", lambda r, t="classic": b"%PDF-stub")
+    monkeypatch.setattr(resume, "render_pdf", lambda r, t="classic", scale=1.0: b"%PDF-stub")
+    monkeypatch.setattr(resume, "pdf_pages", lambda pdf: 1)
 
 
 @pytest.fixture

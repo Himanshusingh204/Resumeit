@@ -18,7 +18,12 @@ def folder(job):
 
 
 def save(job, r, match, template="classic"):
-    """Raises only after every other file is written, so a failed PDF never loses the rest."""
+    return save_fit(job, r, match, template)[0]
+
+
+def save_fit(job, r, match, template="classic"):
+    """Writes the job folder. -> (folder, final resume, flag). The resume is trimmed to one page if needed
+    (flag says when that was not possible). Raises only after every other file is written."""
     d = folder(job)
     d.mkdir(parents=True, exist_ok=True)
     (d / "jd.md").write_text(
@@ -27,7 +32,15 @@ def save(job, r, match, template="classic"):
     (d / "match.txt").write_text(
         f"Match: {match.get('score', '?')}%\n\nYou have:\n" + "".join(f"- {x}\n" for x in match.get("matched", []))
         + "\nNot in your resume:\n" + "".join(f"- {x}\n" for x in match.get("gaps", [])), encoding="utf-8")
+    err, pdf, flag = None, None, None
+    try:
+        r, pdf, _, flag = resume.fit_one_page(r, template)
+    except Exception as e:
+        err = e
     (d / "resume.html").write_text(resume.render_html(r, template), encoding="utf-8")
     (d / "resume.docx").write_bytes(resume.render_docx(r))
-    (d / "resume.pdf").write_bytes(resume.render_pdf(r, template))
-    return d
+    if pdf:
+        (d / "resume.pdf").write_bytes(pdf)
+    if err:
+        raise err
+    return d, r, flag

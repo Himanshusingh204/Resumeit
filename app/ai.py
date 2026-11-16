@@ -9,7 +9,8 @@ def _claude_bin():
 
 def _cli(system, user):
     # shortcut: one process per call via stdin; fine for a single user
-    r = subprocess.run([_claude_bin(), "-p", "--append-system-prompt", system],
+    model = os.getenv("CLAUDE_MODEL")  # e.g. a cheaper/faster model; empty = Claude Code's default
+    r = subprocess.run([_claude_bin(), "-p", *(["--model", model] if model else []), "--append-system-prompt", system],
                        input=user, capture_output=True, text=True, timeout=300, encoding="utf-8")
     if r.returncode:
         raise RuntimeError(f"claude cli: {r.stderr[:300]}")

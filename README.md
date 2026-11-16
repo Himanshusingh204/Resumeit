@@ -8,7 +8,7 @@ You upload your resume once. Resumeit reads your keywords, scrapes job boards (L
 
 - **It never applies for you.** No forms, no emails, no "Easy Apply". It only prepares; you press apply on the original site.
 - **No lies in the resume.** Only facts from your own resume are used. Skills you lack are shown as gaps, never added.
-- **One page.** Resumes are meant to fit a single A4 page. See [docs/PLAN.md](docs/PLAN.md) for what is done and what is planned.
+- **One page.** Every PDF is page-counted and trimmed to a single A4 page, or flagged "manual trim needed". See [docs/PLAN.md](docs/PLAN.md).
 
 ## Your data stays on your computer
 
@@ -42,7 +42,7 @@ Edit `.env`. `AI_PROVIDER=auto` picks the first one available.
 | `anthropic` | `ANTHROPIC_API_KEY` |
 | `openai` | `OPENAI_API_KEY` (not tested end to end) |
 
-Each resume costs one AI call, so build the jobs you care about instead of everything at once.
+Optional `CLAUDE_MODEL` / `ANTHROPIC_MODEL` / `OPENAI_MODEL` pick a cheaper or faster model. Each resume costs one AI call, so build the jobs you care about instead of everything at once.
 
 ## How to use
 
@@ -52,6 +52,28 @@ Each resume costs one AI call, so build the jobs you care about instead of every
 4. Preview opens when it is ready. Download PDF/DOCX, or open the job's folder.
 
 Anything that was skipped or failed is listed under **Issues** and saved in `data/issues.log`.
+
+More: **What changed** in the preview (your base resume vs the tailored one), a per-job **Applied / Interview / Rejected / Offer** tracker (set by you only), badges like `5+ yrs` / `US only`, an optional cover letter, **Backup** and **Fix 2-page PDFs** buttons.
+
+## Daily scan (never applies)
+
+```
+PUT /api/saved-search   {"terms":["python developer"],"location":"Pune","max_resumes":5}
+scripts\install_daily_task.bat     # Task Scheduler, 09:00 daily
+.venv\Scripts\python -m app.scan   # or run by hand
+```
+
+It finds new jobs and builds at most `max_resumes` resumes, then writes `jobs/_daily.md`. Create `data\STOP` to halt a run.
+
+## MCP server
+
+Use Resumeit from Claude Desktop / Claude Code:
+
+```
+claude mcp add resumeit -- D:\path\to\resumeit\.venv\Scripts\python.exe -m app.mcp_server
+```
+
+Tools: `get_profile`, `list_jobs`, `get_job`, `search_jobs`, `estimate_ai_calls`, `build_resume`, `what_changed`, `write_cover_letter`, `run_daily_scan`, `list_issues`. There is deliberately no tool to apply or to set the tracker status.
 
 ## Tests
 
@@ -65,7 +87,8 @@ Tests use fake scrapers and a fake AI, so they need no network and never touch y
 
 - Scraping is fragile: LinkedIn and Naukri block quickly, so some searches return nothing.
 - Windows only for the "open folder" buttons.
-- Read each resume before sending. The tool checks that it is complete, but you are the final check.
+- Read each resume before sending. The truth guard catches invented facts, not a true fact bent out of shape (e.g. "contributed" to "led"). You are the final check.
+- The DOCX page count cannot be verified; only the PDF is checked.
 
 ## License
 

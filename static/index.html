@@ -78,6 +78,9 @@ details summary{cursor:pointer;color:var(--mut);font-size:12.5px;margin-top:12px
 .ch{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}.ch span{font:11.5px var(--mono);padding:2px 7px;border-radius:4px;border:1px solid var(--line);color:var(--mut)}
 .ch span{max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ch .y{color:var(--ok);border-color:transparent;background:var(--okb)}.ch .g{color:var(--wa);border-color:transparent;background:var(--wab)}
+.fl{display:inline-block;font-size:11px;padding:0 6px;border-radius:4px;background:var(--wab);color:var(--wa);margin-left:4px}
+.fl.bad{background:var(--erb);color:var(--er)}.trk{font-size:12px;padding:2px 4px}
+.df ins{background:var(--okb);color:var(--ok);text-decoration:none}.df del{background:var(--erb);color:var(--er)}.df li{margin:3px 0}
 .err{color:var(--er);font-size:12.5px;margin-top:6px}
 .act{display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
 .tag{font:500 11px/1 var(--mono);padding:4px 7px;border-radius:4px;border:1px solid var(--line);color:var(--mut)}
@@ -103,6 +106,8 @@ iframe{width:100%;height:68vh;border:1px solid var(--line);border-radius:8px;bac
   <span class="ai" id="aiPill"><i></i><span id="aiT">AI</span></span>
   <select id="tpl" class="btn sm" title="Resume template used for PDFs"><option value="classic">Template: Classic</option><option value="modern">Template: Modern</option><option value="compact">Template: Compact</option></select>
   <button class="btn sm" onclick="openFolder()" title="Every finished resume is saved here">Jobs folder</button>
+  <a class="btn sm" href="/api/backup" title="Zip of your database and jobs folder">Backup</a>
+  <button class="btn sm" onclick="refit()" title="Re-fit already built resumes to one page. No AI calls.">Fix 2-page PDFs</button>
   <button class="btn sm" onclick="openIssues()">Issues <b class="mono" id="ic">0</b></button>
   <button class="btn sm icon" id="themeB" aria-label="Toggle theme"></button>
 </div></div>
@@ -154,13 +159,13 @@ iframe{width:100%;height:68vh;border:1px solid var(--line);border-radius:8px;bac
   <div class="bar2">
     <div class="tabs" id="tabs"></div>
     <div class="tools"><button class="btn sm" id="stopb" onclick="stopQueue()" hidden></button><button class="btn sm p" id="pendb" onclick="pending()" hidden></button>
-      <input type="text" id="q" placeholder="Filter"><select id="sort" class="btn sm"><option value="new">Newest</option><option value="match">Best match</option></select></div>
+      <input type="text" id="q" placeholder="Filter"><label class="mut" style="font-size:12px"><input type="checkbox" id="hsr" onchange="hideSr=this.checked;draw()"> hide above my level</label><select id="sort" class="btn sm"><option value="new">Newest</option><option value="match">Best match</option></select></div>
   </div>
   <div class="list"><div id="jobs"></div><div class="empty" id="emptyS" hidden></div></div>
 </main>
 </div>
 
-<dialog id="pdlg"><div class="dh"><b id="pt"></b><select id="ptpl" class="btn sm"><option value="classic">Classic</option><option value="modern">Modern</option><option value="compact">Compact</option></select><a class="btn sm p" id="ppdf">PDF</a><a class="btn sm" id="pdoc">DOCX</a><button class="btn sm" onclick="$('pdlg').close()">Close</button></div><div class="db"><div class="mut" id="pmeta" style="margin-bottom:10px;font-size:13px"></div><iframe id="pf"></iframe></div></dialog>
+<dialog id="pdlg"><div class="dh"><b id="pt"></b><select id="ptpl" class="btn sm"><option value="classic">Classic</option><option value="modern">Modern</option><option value="compact">Compact</option></select><a class="btn sm p" id="ppdf">PDF</a><a class="btn sm" id="pdoc">DOCX</a><button class="btn sm" onclick="$('pdlg').close()">Close</button></div><div class="db"><div class="mut" id="pmeta" style="margin-bottom:10px;font-size:13px"></div><button class="btn sm" id="chg" onclick="showDiff()" style="margin-bottom:8px">What changed</button><div id="dfv" class="df" hidden></div><iframe id="pf"></iframe></div></dialog>
 <dialog id="idlg"><div class="dh"><b>Skipped, failed or incomplete</b><button class="btn sm" onclick="clearI()">Clear all</button><button class="btn sm" onclick="$('idlg').close()">Close</button></div><div class="db"><div class="mut">Everything that could not be done is listed here and saved to data/issues.log</div><div id="issues"></div></div></dialog>
 <dialog id="edlg"><div class="dh"><b>Edit parsed resume (JSON)</b><button class="btn sm p" onclick="saveP()">Save</button><button class="btn sm" onclick="$('edlg').close()">Close</button></div><div class="db"><textarea id="pjson" style="min-height:55vh;font:13px var(--mono)"></textarea></div></dialog>
 <dialog id="tdlg"><div class="dh"><b>Paste your resume text</b><button class="btn sm" onclick="$('tdlg').close()">Close</button></div><div class="db"><div class="mut">Select all in your resume, copy, paste here. Use this when a PDF has no readable text.</div>
@@ -231,7 +236,8 @@ async function go(){addTerm($('chipIn').value);$('chipIn').value='';
     runActive=$('auto').checked;shownRun=false;toast($('auto').checked?'Started. The first finished resume opens as a preview.':'Searching. No AI is used until you press Build.')}catch(e){toast(e.message,1)}tick()}
 async function manual(){if(!$('md').value.trim()&&!$('mu').value.trim())return toast('Paste the job description or a job link',1);
   try{const r=await post('/api/jobs',{title:$('mt').value,company:$('mc').value,url:$('mu').value,description:$('md').value});watch.add(r.id);$('md').value='';$('mdlg').close();toast('Building. Preview opens when ready.')}catch(e){toast(e.message,1)}tick()}
-async function pending(){const n=jobs.filter(x=>(x.status==='new'||x.status==='error')&&fitOf(x).length).length;
+async function pending(){const ids=jobs.filter(x=>(x.status==='new'||x.status==='error')&&fitOf(x).length).map(x=>x.id);
+  const n=(await post('/api/estimate',{ids}).catch(()=>({ai_calls:ids.length}))).ai_calls;
   if(!confirm(`Build resumes for ${n} jobs that match your skills? This uses about ${n} AI calls and takes a while. You can stop the queue any time.`))return;
   try{const r=await api('/api/jobs/tailor-pending',{method:'POST'});toast(`${r.queued} queued.`)}catch(e){toast(e.message,1)}tick()}
 async function stopQueue(){try{const r=await api('/api/queue/stop',{method:'POST'});toast(`${r.stopped} jobs taken out of the queue.`)}catch(e){toast(e.message,1)}tick()}
@@ -239,7 +245,7 @@ async function clearJobs(st){if(!confirm(st?'Delete all failed jobs?':'Delete AL
   try{await api('/api/jobs'+(st?'?status=error':''),{method:'DELETE'});cache.clear();$('jobs').innerHTML='';toast('Deleted')}catch(e){toast(e.message,1)}tick()}
 
 /* ---- jobs list (rows are patched in place, so clicks are never lost to a refresh) ---- */
-const GROUPS={all:['All',()=>true],done:['Ready',j=>j.status==='done'],new:['Not built',j=>j.status==='new'],work:['In progress',j=>j.status==='queued'||j.status==='tailoring'],low:['Low match',j=>j.status==='skipped'],error:['Failed',j=>j.status==='error']};
+const GROUPS={all:['All',()=>true],done:['Ready',j=>j.status==='done'],new:['Not built',j=>j.status==='new'],work:['In progress',j=>j.status==='queued'||j.status==='tailoring'],low:['Low match',j=>j.status==='skipped'],error:['Failed',j=>j.status==='error'],applied:['Applied',j=>!!j.track]};
 const LABEL={done:'Ready',tailoring:'Building',queued:'Queued',new:'Not built',error:'Failed',skipped:'Low match'};
 const sc=j=>{try{return JSON.parse(j.match||'{}')}catch{return{}}};
 const fitOf=j=>{try{return JSON.parse(j.fit||'[]')}catch{return[]}};
@@ -253,16 +259,16 @@ function rowHtml(j){const m=sc(j),built=m.score!=null,fit=fitOf(j),cls=built?(m.
   const chips=built?[...(m.matched||[]).slice(0,4).map(g=>`<span class="y" title="${esc(g)}">${esc(g)}</span>`),...(m.gaps||[]).slice(0,3).map(g=>`<span class="g" title="Not in your resume: ${esc(g)}">gap: ${esc(g)}</span>`)]
     :fit.slice(0,5).map(g=>`<span title="Your skill, mentioned in this job">${esc(g)}</span>`);
   let act='';
-  if(j.status==='done')act=`<button class="btn sm p" onclick="prev(${j.id},this.dataset.t)" data-t="${esc(j.title)}">Preview</button><a class="btn sm" href="${link(j.id,'pdf')}">PDF</a><a class="btn sm" href="${link(j.id,'docx')}">DOCX</a><button class="btn sm" onclick="openFolder(${j.id})">Folder</button><button class="btn sm ghost" onclick="redo(${j.id})">Rebuild</button>`;
+  if(j.status==='done')act=`<button class="btn sm p" onclick="prev(${j.id},this.dataset.t)" data-t="${esc(j.title)}">Preview</button><a class="btn sm" href="${link(j.id,'pdf')}">PDF</a><a class="btn sm" href="${link(j.id,'docx')}">DOCX</a><button class="btn sm" onclick="openFolder(${j.id})">Folder</button><button class="btn sm ghost" onclick="cover(${j.id})" title="Optional. One AI call.">${j.has_cover?'Cover letter (redo)':'Cover letter'}</button><button class="btn sm ghost" onclick="redo(${j.id})">Rebuild</button>`;
   else if(j.status==='tailoring')act='';
   else if(j.status==='queued')act=`<button class="btn sm" onclick="redo(${j.id})" title="Skip the queue and build this one now">Build now</button>`;
   else act=`<button class="btn sm ${j.status==='new'&&fit.length?'p':''}" onclick="redo(${j.id})">${j.status==='skipped'?'Build anyway':'Build'}</button>`;
   return `<div class="job" data-id="${j.id}"><div class="fit ${cls}">${num}${cap?`<small>${cap}</small>`:''}<span class="m"><i style="width:${pct}%"></i></span></div>
    <div style="min-width:0"><div class="jt">${esc(j.title)}</div><div class="sub">${esc(j.company)}${j.location?' · '+esc(j.location):''}${j.posted?' · '+esc(j.posted):''} · ${esc(j.site)}${j.url.startsWith('http')?` · <a href="${esc(j.url)}" target="_blank" rel="noopener">open</a>`:''}</div>
-   ${chips.length?`<div class="ch">${chips.join('')}</div>`:''}${j.error&&j.status!=='skipped'?`<div class="err">${esc(j.error)}</div>`:''}</div>
-   <div class="act"><span class="tag ${j.status}">${LABEL[j.status]||j.status}</span>${act}<button class="btn sm ghost icon" onclick="del(${j.id})" title="Delete job" style="width:28px">${IC.tr}</button></div></div>`}
+   ${chips.length?`<div class="ch">${chips.join('')}</div>`:''}${j.error&&j.status!=='skipped'?`<div class="err">${esc(j.error)}</div>`:''}${j.flag?`<div class="err">${esc(j.flag)}</div>`:''}</div>
+   <div class="act">${(j.flags||[]).map(f=>`<span class="fl${j.senior&&/yrs/.test(f)?' bad':''}" title="Read from the job text. Only a hint.">${esc(f)}</span>`).join('')}<select class="btn sm trk" onchange="track(${j.id},this.value)" title="You set this by hand. The app never applies for you."><option value="">Not applied</option>${['Applied','Interview','Rejected','Offer'].map(t=>`<option${j.track===t?' selected':''}>${t}</option>`).join('')}</select><span class="tag ${j.status}">${LABEL[j.status]||j.status}</span>${act}<button class="btn sm ghost icon" onclick="del(${j.id})" title="Delete job" style="width:28px">${IC.tr}</button></div></div>`}
 function draw(){const q=$('q').value.toLowerCase(),box=$('jobs');
-  let l=jobs.filter(j=>GROUPS[filter][1](j)&&`${j.title} ${j.company}`.toLowerCase().includes(q));
+  let l=jobs.filter(j=>(filter==='applied'?!!j.track:(filter==='all'?!['Applied','Rejected'].includes(j.track):true))&&GROUPS[filter][1](j)&&(!hideSr||!j.senior)&&`${j.title} ${j.company}`.toLowerCase().includes(q));
   if($('sort').value==='match')l.sort((a,b)=>rank(b)-rank(a));
   const keep=new Set();let ref=box.firstElementChild;
   for(const j of l){keep.add(j.id);const h=rowHtml(j);let c=cache.get(j.id);
@@ -272,14 +278,23 @@ function draw(){const q=$('q').value.toLowerCase(),box=$('jobs');
   for(const [id,c] of cache)if(!keep.has(id)){c.el.remove();cache.delete(id)}
   const e=$('emptyS');e.hidden=l.length>0;
   e.innerHTML=`<b>${jobs.length?'Nothing in this view':'No jobs yet'}</b>${jobs.length?'Try another tab or clear the filter.':profOk?'Press Find jobs on the left.':'Start by reading your resume on the left.'}`}
-let pid=0;
-function prev(id,t){pid=id;const j=jobs.find(x=>x.id===id)||{},m=sc(j);$('pmeta').textContent=(m.score!=null?`Match ${m.score}%`:'')+(m.gaps?.length?` · Not in your resume: ${m.gaps.slice(0,6).join(', ')}`:'')+' · Built only from facts in your resume. Read it before sending.';
+let hideSr=false,pid=0;
+function prev(id,t){pid=id;$('dfv').hidden=true;const j=jobs.find(x=>x.id===id)||{},m=sc(j);$('pmeta').textContent=(m.score!=null?`Match ${m.score}%`:'')+(m.gaps?.length?` · Not in your resume: ${m.gaps.slice(0,6).join(', ')}`:'')+' · Built only from facts in your resume. Read it before sending.';
   $('pt').textContent=t;$('ptpl').value=TPL;setPrev();$('pdlg').showModal()}
 function setPrev(){$('pf').src=`/api/jobs/${pid}/resume.html?t=${$('ptpl').value}`;$('ppdf').href=`/api/jobs/${pid}/resume.pdf?t=${$('ptpl').value}`;$('pdoc').href=`/api/jobs/${pid}/resume.docx`}
 $('ptpl').onchange=()=>{setT($('ptpl').value);$('tpl').value=$('ptpl').value;setPrev();cache.clear();$('jobs').innerHTML='';draw()};
 async function redo(id){try{await api(`/api/jobs/${id}/tailor`,{method:'POST'});watch.add(id);toast('Building. Preview opens when ready.')}catch(e){toast(e.message,1)}tick()}
 async function del(id){if(confirm('Delete this job?')){await api('/api/jobs/'+id,{method:'DELETE'});tick()}}
 async function openFolder(id){try{await api(id?`/api/jobs/${id}/folder`:'/api/folder',{method:'POST'})}catch(e){toast(e.message,1)}}
+async function track(id,v){try{await post(`/api/jobs/${id}/track`,{status:v});toast(v?'Marked '+v:'Cleared')}catch(e){toast(e.message,1)}tick()}
+async function refit(){if(!confirm('Re-fit already built resumes to one page? No AI calls; it only removes the least relevant lines and shrinks type to 9pt at most.'))return;
+  try{const r=await api('/api/jobs/refit',{method:'POST'});toast(r.queued+' resumes queued for re-fit. See Issues for any that need manual trim.')}catch(e){toast(e.message,1)}tick()}
+async function cover(id){toast('Writing cover letter...');try{await api(`/api/jobs/${id}/cover-letter`,{method:'POST'});toast('Saved as cover_letter.md in the job folder')}catch(e){toast(e.message,1)}tick()}
+async function showDiff(){const b=$('dfv');if(!b.hidden){b.hidden=true;return}
+  try{const d=await api(`/api/jobs/${pid}/diff`);let h='';
+    h+=`<p><b>Skills</b> removed: ${d.skills.removed.map(esc).map(x=>`<del>${x}</del>`).join(' ')||'none'}</p>`;
+    for(const k of ['experience','projects'])for(const e of d[k])h+=`<p><b>${esc(e.name)}</b>${e.dropped?' <del>dropped</del>':''}</p><ul>`+e.bullets.map(x=>`<li>${x.state==='same'?esc(x.text):x.state==='reworded'?`<ins>${esc(x.text)}</ins> <span class="mut">(was: ${esc(x.was)})</span>`:`<ins>NEW? ${esc(x.text)}</ins>`}</li>`).join('')+e.removed_bullets.map(x=>`<li><del>${esc(x)}</del></li>`).join('')+'</ul>';
+    b.innerHTML=h;b.hidden=false}catch(e){toast(e.message,1)}}
 async function openIssues(){await tick();$('idlg').showModal()}
 async function clearI(){await api('/api/issues',{method:'DELETE'});tick()}
 

@@ -1,5 +1,5 @@
 """Parse base resume -> profile JSON; tailor profile to a JD; render HTML / PDF / DOCX."""
-import html, io, json, re, shutil, subprocess, tempfile, time
+import copy, html, io, json, re, shutil, subprocess, tempfile, time
 from pathlib import Path
 from . import ai
 
@@ -64,8 +64,10 @@ def validate(r, profile):
 RULES = ("You tailor a candidate's resume to one job description. HARD RULES: use ONLY facts present in the "
          "candidate profile - never invent employers, titles, dates, degrees, metrics, tools or skills. "
          "You may reorder, select, and reword bullets to mirror the JD's language when the candidate truly did it. "
-         "Put the most relevant skills/experience/projects first, drop irrelevant ones, keep it to about 1 page. "
-         "Write a 2-3 line summary targeted at this role using only profile facts. "
+         "Put the most relevant skills/experience/projects first, drop irrelevant ones. The resume MUST fit ONE page: "
+         "at most 3 bullets per role, at most 3 projects, at most 12 skills, a 2 line summary. "
+         "Copy company, title, dates, degrees, certifications and skill names exactly as in the profile; "
+         "do not write any number that is not in the profile. "
          'Return JSON: {"resume": <same shape as the profile>, "match": {"score": 0-100, '
          '"matched": [JD keywords the candidate genuinely has], "gaps": [JD requirements the profile lacks]}}. '
          "Profile shape: " + SCHEMA)
@@ -122,8 +124,8 @@ def _item(left, sub, right, x=None):
             + (_bul(x) if x else "") + "</div>")
 
 
-def render_html(r, template="classic"):
-    css = BASE + TEMPLATES.get(template, TEMPLATES["classic"])
+def render_html(r, template="classic", scale=1.0):
+    css = BASE + TEMPLATES.get(template, TEMPLATES["classic"]) + (f"html{{zoom:{scale:.3f}}}" if scale != 1.0 else "")
     o = [f"<header><h1>{_e(r.get('name'))}</h1><div class=c>{' &nbsp;|&nbsp; '.join(map(_e, _contact(r)))}</div></header>"]
     if r.get("summary"):
         o.append(f"<h2>Summary</h2><p>{_e(r['summary'])}</p>")
@@ -152,13 +154,13 @@ def _browser():
     return shutil.which("msedge") or shutil.which("chrome")
 
 
-def render_pdf(r, template="classic"):
+def render_pdf(r, template="classic", scale=1.0):
     browser = _browser()
     if not browser:
         raise RuntimeError("Edge/Chrome not found for PDF export; use the HTML or DOCX download")
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
         src, out = Path(d) / "r.html", Path(d) / "r.pdf"
-        src.write_text(render_html(r, template), encoding="utf-8")
+        src.write_text(render_html(r, template, scale), encoding="utf-8")
         subprocess.run([browser, "--headless=new", "--disable-gpu", "--no-pdf-header-footer", f"--user-data-dir={d}/prof",
                         f"--print-to-pdf={out}", src.as_uri()], check=True, capture_output=True, timeout=60)
         for _ in range(100):  # Edge can exit before the PDF is flushed
@@ -167,6 +169,59 @@ def render_pdf(r, template="classic"):
                 return out.read_bytes()
             time.sleep(0.2)
         raise RuntimeError("PDF export timed out; use the HTML or DOCX download")
+
+
+# ---------------------------------------------------------------- one page (rule 1.3)
+BASE_PT = {"classic": 10.5, "modern": 10.0, "compact": 9.5}
+MIN_PT = 9.0  # never shrink body text below this
+
+
+def pdf_pages(pdf):
+    from pypdf import PdfReader
+    return len(PdfReader(io.BytesIO(pdf)).pages)
+
+
+def _trim_one(r):
+    """Remove the least relevant item (the AI orders most relevant first, so the last one). Never adds anything."""
+    def pop(lst):
+        lst.pop()
+        return True
+
+    def bullets(keep):
+        c = [x for x in r.get("experience") or [] if len(x.get("bullets") or []) > keep]
+        return pop(max(c, key=lambda x: len(x["bullets"]))["bullets"]) if c else False
+
+    skills, projects = r.get("skills") or [], r.get("projects") or []
+    steps = (lambda: len(projects) > 2 and pop(projects), lambda: bullets(2), lambda: len(skills) > 10 and pop(skills),
+             lambda: bool(projects) and pop(projects), lambda: bullets(1), lambda: len(skills) > 6 and pop(skills))
+    return any(s() for s in steps)
+
+
+def fit_one_page(r, template="classic"):
+    """-> (resume, pdf bytes, pages, flag). Shrinks type to 9pt first, then drops least relevant content.
+    flag is None when it fits on one A4 page, else a 'manual trim needed' message."""
+    r = copy.deepcopy(r)
+    floor = max(MIN_PT / BASE_PT.get(template, 10.5), 0.8)
+    scales = [1.0] + [round(1.0 - (1.0 - floor) * i / 3, 3) for i in (1, 2, 3)]
+
+    def attempt(res, steps):
+        pdf = pages = None
+        for sc in steps:
+            pdf = render_pdf(res, template, sc)
+            pages = pdf_pages(pdf)
+            if pages == 1:
+                break
+        return pdf, pages
+
+    pdf, pages = attempt(r, scales)
+    trimmed = False
+    while pages > 1 and _trim_one(r):
+        trimmed = True
+        pdf, pages = attempt(r, [floor])
+    if trimmed and pages == 1:  # fits at the smallest type: see if a bigger one also fits
+        pdf, pages = attempt(r, scales)
+    flag = None if pages == 1 else f"Manual trim needed: still {pages} pages at {MIN_PT:g}pt"
+    return r, pdf, pages, flag
 
 
 def render_docx(r):

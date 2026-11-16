@@ -27,7 +27,7 @@ def test_finished_resume_is_written_to_a_job_folder(profile, monkeypatch, job_ro
 
 def test_pdf_failure_keeps_job_done_and_other_files_and_logs_issue(profile, monkeypatch, job_row):
     monkeypatch.setattr(ai, "complete_json", lambda s, u: GOOD)
-    monkeypatch.setattr(resume, "render_pdf", lambda r, t="classic": (_ for _ in ()).throw(RuntimeError("no browser")))
+    monkeypatch.setattr(resume, "render_pdf", lambda *a: (_ for _ in ()).throw(RuntimeError("no browser")))
     jid = job_row()
     main._tailor(jid)
     assert client.get(f"/api/jobs/{jid}").json()["status"] == "done"

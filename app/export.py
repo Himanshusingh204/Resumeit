@@ -21,7 +21,7 @@ def save(job, r, match, template="classic"):
     return save_fit(job, r, match, template)[0]
 
 
-def save_fit(job, r, match, template="classic"):
+def save_fit(job, r, match, template="classic", pages="one"):
     """Writes the job folder. -> (folder, final resume, flag). The resume is trimmed to one page if needed
     (flag says when that was not possible). Raises only after every other file is written."""
     d = folder(job)
@@ -34,7 +34,7 @@ def save_fit(job, r, match, template="classic"):
         + "\nNot in your resume:\n" + "".join(f"- {x}\n" for x in match.get("gaps", [])), encoding="utf-8")
     err, pdf, flag = None, None, None
     try:
-        r, pdf, _, flag = resume.fit_one_page(r, template)
+        r, pdf, _, flag = resume.fit_one_page(r, template, pages)
     except Exception as e:
         err = e
     (d / "resume.html").write_text(resume.render_html(r, template), encoding="utf-8")

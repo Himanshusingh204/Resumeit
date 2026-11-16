@@ -23,9 +23,11 @@ Tailored resume me **sirf wahi facts** aayenge jo tumhare base resume (profile) 
 - Jo requirement tumhare paas nahi hai, wo **gap** ban ke dikhti hai. Chhupai ya bharai nahi jati.
 - Sirf prompt pe bharosa nahi. **Code se bhi check** hoga (section 3, item A).
 
-### 1.3 Resume sirf 1 page
-- Har PDF **ek A4 page** ka. Do page ka resume ban hi nahi sakta, ya to chhota hoga ya "manual trim chahiye" ke saath flag hoga.
-- Chhota karne ka tarika: *content ghatana* (kam bullets, kam projects), kabhi content badhana nahi (section 3, item A).
+### 1.3 Resume 1 page (zarurat ho to 2 page)
+- Default: **ek A4 page**. Jab tumhare paas bahut relevant experience ho aur 1 page me sirf chhote font ya kaatne se aata ho, tab **2 page** allowed hai (kabhi 3 nahi).
+- 2 page tabhi jab dusra page kam se kam ~30% bhara ho. Nahi to wapas 1 page me trim (adhoora khali page nahi).
+- Top bar me "Length" se badal sakte ho: *1 page (2 if needed)* ya *always 1 page* (purana strict rule: font 9 pt se neeche nahi, phir kam relevant cheez hatao, phir "manual trim" flag).
+- Chhota karne ka tarika: *content ghatana*, kabhi content badhana nahi (section 3, item A).
 
 ---
 
@@ -36,9 +38,9 @@ Tailored resume me **sirf wahi facts** aayenge jo tumhare base resume (profile) 
 | Resume upload (PDF/DOCX/TXT/paste), parse, edit, delete | chal raha hai |
 | Resume se keywords, job search (LinkedIn, Indeed, Naukri, Glassdoor, Google) via JobSpy | chal raha hai |
 | Job link ya pasted JD se resume | chal raha hai |
-| AI: Claude Code CLI (tested), Anthropic API, OpenAI | OpenAI **untested** (key nahi) |
+| AI: Claude Code CLI (tested), Anthropic API, OpenAI, Gemini | OpenAI aur Gemini **live untested** (key nahi) |
 | Har resume ke liye `jobs/<date>/<company>_<title>_<id>/` folder: `jd.md`, `match.txt`, `resume.pdf/.docx/.html` | chal raha hai |
-| 3 templates (Classic, Modern, Compact), preview, PDF, DOCX | chal raha hai |
+| 7 templates (Classic, Modern, Compact, Minimal, Executive, Tech, Elegant), preview, PDF, DOCX | chal raha hai |
 | Search sirf jobs laati hai. Resume tabhi banta hai jab tum Build dabao (ya checkbox tick karo) | chal raha hai |
 | Jobs par "tumhari kitni skills mili" (bina AI ke), low-match jobs pe AI call nahi | chal raha hai |
 | Queue: Stop queue, single Build queue skip karta hai | chal raha hai |

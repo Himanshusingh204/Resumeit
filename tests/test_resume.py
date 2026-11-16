@@ -80,9 +80,9 @@ def test_profile_problem():
     assert resume.profile_problem(None) == "no name found"
 
 
-def test_three_distinct_templates():
+def test_all_templates_are_distinct():
     out = {t: resume.render_html(R, t) for t in resume.TEMPLATES}
-    assert set(out) == {"classic", "modern", "compact"} and len(set(out.values())) == 3
+    assert {"classic", "modern", "compact"} <= set(out) and len(set(out.values())) == len(out)
     assert all("Built &lt;api&gt;" in h for h in out.values())
 
 

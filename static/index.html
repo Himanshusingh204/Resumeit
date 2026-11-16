@@ -104,7 +104,8 @@ iframe{width:100%;height:68vh;border:1px solid var(--line);border-radius:8px;bac
 <div class="top"><div>
   <span class="logo">Resumeit</span>
   <span class="ai" id="aiPill"><i></i><span id="aiT">AI</span></span>
-  <select id="tpl" class="btn sm" title="Resume template used for PDFs"><option value="classic">Template: Classic</option><option value="modern">Template: Modern</option><option value="compact">Template: Compact</option></select>
+  <select id="tpl" class="btn sm" title="Resume template used for PDFs"><option value="classic">Template: Classic</option><option value="modern">Template: Modern</option><option value="compact">Template: Compact</option><option value="minimal">Template: Minimal</option><option value="executive">Template: Executive</option><option value="tech">Template: Tech</option><option value="elegant">Template: Elegant</option></select>
+  <select id="pg" class="btn sm" title="Resume length" onchange="post('/api/pages',{p:this.value}).catch(()=>{})"><option value="auto">Length: 1 page (2 if needed)</option><option value="one">Length: always 1 page</option></select>
   <button class="btn sm" onclick="openFolder()" title="Every finished resume is saved here">Jobs folder</button>
   <a class="btn sm" href="/api/backup" title="Zip of your database and jobs folder">Backup</a>
   <button class="btn sm" onclick="refit()" title="Re-fit already built resumes to one page. No AI calls.">Fix 2-page PDFs</button>
@@ -176,7 +177,7 @@ iframe{width:100%;height:68vh;border:1px solid var(--line);border-radius:8px;bac
 </main>
 </div>
 
-<dialog id="pdlg"><div class="dh"><b id="pt"></b><select id="ptpl" class="btn sm"><option value="classic">Classic</option><option value="modern">Modern</option><option value="compact">Compact</option></select><a class="btn sm p" id="ppdf">PDF</a><a class="btn sm" id="pdoc">DOCX</a><button class="btn sm" onclick="$('pdlg').close()">Close</button></div><div class="db"><div class="mut" id="pmeta" style="margin-bottom:10px;font-size:13px"></div><button class="btn sm" id="chg" onclick="showDiff()" style="margin-bottom:8px">What changed</button><div id="dfv" class="df" hidden></div><iframe id="pf"></iframe></div></dialog>
+<dialog id="pdlg"><div class="dh"><b id="pt"></b><select id="ptpl" class="btn sm"><option value="classic">Classic</option><option value="modern">Modern</option><option value="compact">Compact</option><option value="minimal">Minimal</option><option value="executive">Executive</option><option value="tech">Tech</option><option value="elegant">Elegant</option></select><a class="btn sm p" id="ppdf">PDF</a><a class="btn sm" id="pdoc">DOCX</a><button class="btn sm" onclick="$('pdlg').close()">Close</button></div><div class="db"><div class="mut" id="pmeta" style="margin-bottom:10px;font-size:13px"></div><button class="btn sm" id="chg" onclick="showDiff()" style="margin-bottom:8px">What changed</button><div id="dfv" class="df" hidden></div><iframe id="pf"></iframe></div></dialog>
 <dialog id="idlg"><div class="dh"><b>Skipped, failed or incomplete</b><button class="btn sm" onclick="clearI()">Clear all</button><button class="btn sm" onclick="$('idlg').close()">Close</button></div><div class="db"><div class="mut">Everything that could not be done is listed here and saved to data/issues.log</div><div id="issues"></div></div></dialog>
 <dialog id="edlg"><div class="dh"><b>Edit parsed resume (JSON)</b><button class="btn sm p" onclick="saveP()">Save</button><button class="btn sm" onclick="$('edlg').close()">Close</button></div><div class="db"><textarea id="pjson" style="min-height:55vh;font:13px var(--mono)"></textarea></div></dialog>
 <dialog id="tdlg"><div class="dh"><b>Paste your resume text</b><button class="btn sm" onclick="$('tdlg').close()">Close</button></div><div class="db"><div class="mut">Select all in your resume, copy, paste here. Use this when a PDF has no readable text.</div>
@@ -209,8 +210,8 @@ const setT=v=>{TPL=v;post('/api/template',{t:v}).catch(()=>{})};
 $('tpl').onchange=()=>{setT($('tpl').value);cache.clear();$('jobs').innerHTML='';draw()};
 
 /* ---- resume ---- */
-async function loadP(){const d=await api('/api/profile');const p=d.profile;profOk=!d.problem;TPL=d.template;$('tpl').value=TPL;
-  const bad=d.ai.startsWith('NOT');$('aiPill').classList.toggle('bad',bad);$('aiT').textContent=bad?'AI not configured':({claude_cli:'Claude Code',anthropic:'Claude API',openai:'OpenAI'}[d.ai]||d.ai);$('aiPill').title=d.ai;
+async function loadP(){const d=await api('/api/profile');const p=d.profile;profOk=!d.problem;TPL=d.template;$('tpl').value=TPL;$('pg').value=d.pages||'auto';
+  const bad=d.ai.startsWith('NOT');$('aiPill').classList.toggle('bad',bad);$('aiT').textContent=bad?'AI not configured':({claude_cli:'Claude Code',anthropic:'Claude API',openai:'OpenAI',gemini:'Gemini'}[d.ai]||d.ai);$('aiPill').title=d.ai;
   $('s1').textContent=profOk?'ready':'';['c2','c3'].forEach(i=>$(i).classList.toggle('lock',!profOk));$('lockNote').hidden=profOk;$('delRes').hidden=!p;
   $('alert').hidden=!(p&&d.problem);$('alertMsg').textContent=' Nothing usable was found ('+(d.problem||'')+'). Jobs cannot be tailored until this is fixed.';
   $('profView').innerHTML=profOk?`<div class="who"><b>${esc(p.name)}</b><span>${esc([p.email,p.location].filter(Boolean).join(' · '))}</span></div>

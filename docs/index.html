@@ -82,10 +82,11 @@ run.bat                     # opens http://127.0.0.1:8000</code></pre>
   resume.html    same resume as a web page</code></pre>
 <p>The <b>Jobs folder</b> button opens it. A job link can also be pasted: the description is read from the page, then the resume is built. Jobs that share no skill with your resume are marked <b>Low match</b> and cost no AI call until you press <b>Build anyway</b>.</p></section>
 
-<section id="ai"><h2>AI providers</h2><p>One function, three backends. <code>AI_PROVIDER=auto</code> picks the first available.</p>
+<section id="ai"><h2>AI providers</h2><p>One function, four backends. <code>AI_PROVIDER=auto</code> picks the first available.</p>
 <table><tr><th>Provider</th><th>Needs</th><th>Notes</th></tr>
 <tr><td><span class="tag">claude_cli</span></td><td><code>CLAUDE_BIN</code> or <code>claude</code> on PATH</td><td>Uses your logged-in Claude Code. No key. Tested.</td></tr>
 <tr><td><span class="tag">anthropic</span></td><td><code>ANTHROPIC_API_KEY</code></td><td>Model via <code>ANTHROPIC_MODEL</code>.</td></tr>
+<tr><td><span class="tag">gemini</span></td><td><code>GEMINI_API_KEY</code></td><td>Model via <code>GEMINI_MODEL</code> (default gemini-2.5-flash). Request/response shape tested with a fake; live call not tested.</td></tr>
 <tr><td><span class="tag">openai</span></td><td><code>OPENAI_API_KEY</code></td><td>Model via <code>OPENAI_MODEL</code>. Selection logic tested, live call not.</td></tr></table></section>
 
 <section id="guards"><h2>Guards &amp; tracker</h2><p>Rules from the plan, enforced in code and covered by tests.</p>

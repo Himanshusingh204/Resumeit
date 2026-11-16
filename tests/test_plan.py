@@ -373,3 +373,64 @@ def test_mcp_search_uses_no_ai(profile, monkeypatch):
     monkeypatch.setattr(scrape, "_jobspy", _rows(2))
     out = mcp_server.search_jobs(["python"], sites=["indeed"])
     assert "2 new jobs" in out["message"]
+
+
+def test_seven_templates_each_render_and_are_selectable():
+    assert set(resume.TEMPLATES) == {"classic", "modern", "compact", "minimal", "executive", "tech", "elegant"}
+    assert set(resume.TEMPLATES) <= set(resume.BASE_PT)  # one-page guard knows each template's type size
+    styles = {resume.render_html(PROFILE, t).split("<style>")[1] for t in resume.TEMPLATES}
+    assert len(styles) == 7
+    for t in resume.TEMPLATES:
+        assert client.post("/api/template", json={"t": t}).status_code == 200
+    html = open(export.Path(__file__).resolve().parent.parent / "static" / "index.html", encoding="utf-8").read()
+    assert all(f'value="{t}"' in html for t in resume.TEMPLATES)
+
+
+# ------------------------------------------------------------------ length policy: 1 page, or 2 when really needed
+def _pdf_stub(monkeypatch, pages_at, fill=0.6):
+    """pages_at(scale, r) -> page count. PDF bytes encode the scale and bullet count."""
+    monkeypatch.setattr(resume, "render_pdf", lambda r, t="classic", scale=1.0: f"{scale}|{sum(len(x['bullets']) for x in r['experience'])}".encode())
+    monkeypatch.setattr(resume, "pdf_pages", lambda b: pages_at(float(b.split(b"|")[0]), int(b.split(b"|")[1])))
+    monkeypatch.setattr(resume, "page_fill", lambda b: fill)
+
+
+def test_auto_keeps_one_page_when_it_fits_comfortably(monkeypatch):
+    _pdf_stub(monkeypatch, lambda sc, n: 1)
+    r, pdf, pages, flag = resume.fit_one_page(BIG, "classic", "auto")
+    assert pages == 1 and flag is None and r == BIG and pdf.startswith(b"1.0")
+
+
+def test_auto_allows_two_full_pages_instead_of_cutting_content(monkeypatch):
+    _pdf_stub(monkeypatch, lambda sc, n: 2, fill=0.6)
+    r, pdf, pages, flag = resume.fit_one_page(BIG, "classic", "auto")
+    assert pages == 2 and flag is None and r == BIG  # nothing removed, normal type size
+    assert pdf.startswith(b"1.0")
+
+
+def test_auto_trims_back_to_one_page_when_second_page_would_be_nearly_empty(monkeypatch):
+    # 2 pages with 3 bullets, 1 page once a bullet is gone and type is small
+    _pdf_stub(monkeypatch, lambda sc, n: 1 if (n < 3 and sc < 1) else 2, fill=0.1)
+    r, pdf, pages, flag = resume.fit_one_page(BIG, "classic", "auto")
+    assert pages == 1 and flag is None and guard.truth_problems(r, BIG) == []
+
+
+def test_auto_never_exceeds_two_pages(monkeypatch):
+    _pdf_stub(monkeypatch, lambda sc, n: 3 if n >= 3 else 2, fill=0.6)
+    r, pdf, pages, flag = resume.fit_one_page(BIG, "classic", "auto")
+    assert pages == 2 and len(r["experience"][0]["bullets"]) < 3
+
+
+def test_strict_one_page_policy_never_allows_two(monkeypatch):
+    _pdf_stub(monkeypatch, lambda sc, n: 2, fill=0.9)
+    assert resume.fit_one_page(BIG, "classic", "one")[3].startswith("Manual trim needed")
+
+
+def test_default_policy_is_auto_and_can_be_switched():
+    assert client.get("/api/profile").json()["pages"] == "auto"
+    assert client.post("/api/pages", json={"p": "one"}).status_code == 200
+    assert client.get("/api/profile").json()["pages"] == "one"
+    assert client.post("/api/pages", json={"p": "three"}).status_code == 400
+
+
+def test_prompt_asks_for_strong_bullets_and_allows_two_pages_when_relevant():
+    assert "action verb" in resume.RULES and "TWO pages" in resume.RULES and "Never pad" in resume.RULES

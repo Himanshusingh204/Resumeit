@@ -21,6 +21,11 @@ state = {"scraping": False, "msg": ""}
 db.x("UPDATE jobs SET status='new', error=NULL WHERE status IN ('queued','tailoring')")  # queue does not survive a restart
 
 
+def _pages():
+    """'auto' (default): one page, or two when the content really needs it. 'one': always one page."""
+    return db.kv_get("pages") or "auto"
+
+
 def _tailor(jid):
     job = db.q("SELECT * FROM jobs WHERE id=?", jid)[0]
     db.x("UPDATE jobs SET status='tailoring', error=NULL WHERE id=?", jid)
@@ -35,7 +40,7 @@ def _tailor(jid):
         guard.check(r, profile)  # rule 1.2: nothing that is not already in the profile
         db.x("UPDATE jobs SET status='done', resume=?, match=?, flag=NULL WHERE id=?", json.dumps(r), json.dumps(m), jid)
         try:  # the resume is already safe in the DB; a disk/PDF problem must not undo that
-            _, r2, flag = export.save_fit(job, r, m, db.kv_get("template") or "classic")
+            _, r2, flag = export.save_fit(job, r, m, db.kv_get("template") or "classic", _pages())
             db.x("UPDATE jobs SET resume=?, flag=? WHERE id=?", json.dumps(r2), flag, jid)  # r2 = trimmed to one page
             if flag:
                 db.issue("manual_trim", f"job {jid}: {job['title']} @ {job['company']}", flag)
@@ -111,7 +116,7 @@ def index():
 @app.get("/api/profile")
 def get_profile():
     p = db.kv_get("profile")
-    return {"profile": p, "ai": _ai_name(), "problem": resume.profile_problem(p), "template": db.kv_get("template") or "classic"}
+    return {"profile": p, "ai": _ai_name(), "problem": resume.profile_problem(p), "template": db.kv_get("template") or "classic", "pages": _pages()}
 
 
 class Tpl(BaseModel):
@@ -123,6 +128,18 @@ def set_template(b: Tpl):
     if b.t not in resume.TEMPLATES:
         raise HTTPException(400, "unknown template")
     db.kv_set("template", b.t)  # used for the PDFs written to the jobs folder
+    return {"ok": True}
+
+
+class Pages(BaseModel):
+    p: str
+
+
+@app.post("/api/pages")
+def set_pages(b: Pages):
+    if b.p not in ("auto", "one"):
+        raise HTTPException(400, "p must be 'auto' or 'one'")
+    db.kv_set("pages", b.p)
     return {"ok": True}
 
 
@@ -400,7 +417,7 @@ def _refit(jid):
     """Re-render an already built resume to one page. No AI call; only removes content."""
     j = db.q("SELECT * FROM jobs WHERE id=?", jid)[0]
     try:
-        _, r2, flag = export.save_fit(j, json.loads(j["resume"]), flags.parse(j["match"]), db.kv_get("template") or "classic")
+        _, r2, flag = export.save_fit(j, json.loads(j["resume"]), flags.parse(j["match"]), db.kv_get("template") or "classic", _pages())
         db.x("UPDATE jobs SET resume=?, flag=? WHERE id=?", json.dumps(r2), flag, jid)
         if flag:
             db.issue("manual_trim", f"job {jid}: {j['title']} @ {j['company']}", flag)
@@ -539,7 +556,7 @@ def download(jid: int, fmt: str, t: str = "classic"):
         if fmt == "html":
             return HTMLResponse(resume.render_html(r, t))
         if fmt == "pdf":
-            body, mt = resume.render_pdf(r, t), "application/pdf"
+            body, mt = resume.fit_one_page(r, t, _pages())[1], "application/pdf"  # same page rules as the saved file
         else:
             body, mt = resume.render_docx(r), "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     except Exception as e:

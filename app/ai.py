@@ -1,4 +1,4 @@
-"""One function: complete(system, user) -> text, over Claude Code CLI, Anthropic API or OpenAI API."""
+"""One function: complete(system, user) -> text, over Claude Code CLI, Anthropic API, OpenAI API or Google Gemini API."""
 import json, os, re, shutil, subprocess
 import httpx
 
@@ -35,6 +35,24 @@ def _openai(system, user):
     return r.json()["choices"][0]["message"]["content"]
 
 
+def _gemini_key():
+    return os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+
+
+def _gemini(system, user):
+    model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    r = httpx.post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent", timeout=180,
+                   headers={"x-goog-api-key": _gemini_key()},  # header, not the URL, so the key never lands in logs
+                   json={"systemInstruction": {"parts": [{"text": system}]},
+                         "contents": [{"role": "user", "parts": [{"text": user}]}],
+                         "generationConfig": {"responseMimeType": "application/json"} if "ONE valid JSON" in system else {}})
+    r.raise_for_status()
+    try:
+        return "".join(p.get("text", "") for p in r.json()["candidates"][0]["content"]["parts"])
+    except (KeyError, IndexError):
+        raise RuntimeError("gemini returned no text (blocked or empty): " + r.text[:200])
+
+
 def provider():
     p = os.getenv("AI_PROVIDER", "auto").lower()
     if p != "auto":
@@ -45,11 +63,13 @@ def provider():
         return "anthropic"
     if os.getenv("OPENAI_API_KEY"):
         return "openai"
-    raise RuntimeError("No AI configured: install Claude Code or set ANTHROPIC_API_KEY / OPENAI_API_KEY in .env")
+    if _gemini_key():
+        return "gemini"
+    raise RuntimeError("No AI configured: install Claude Code or set ANTHROPIC_API_KEY / OPENAI_API_KEY / GEMINI_API_KEY in .env")
 
 
 def complete(system, user):
-    return {"claude_cli": _cli, "anthropic": _anthropic, "openai": _openai}[provider()](system, user)
+    return {"claude_cli": _cli, "anthropic": _anthropic, "openai": _openai, "gemini": _gemini}[provider()](system, user)
 
 
 def complete_json(system, user):

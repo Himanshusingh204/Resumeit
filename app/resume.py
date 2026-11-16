@@ -64,8 +64,14 @@ def validate(r, profile):
 RULES = ("You tailor a candidate's resume to one job description. HARD RULES: use ONLY facts present in the "
          "candidate profile - never invent employers, titles, dates, degrees, metrics, tools or skills. "
          "You may reorder, select, and reword bullets to mirror the JD's language when the candidate truly did it. "
-         "Put the most relevant skills/experience/projects first, drop irrelevant ones. The resume MUST fit ONE page: "
-         "at most 3 bullets per role, at most 3 projects, at most 12 skills, a 2 line summary. "
+         "Write it like a strong recruiter-ready resume: a sharp 2 line summary aimed at THIS role (title + strongest "
+         "matching strengths), bullets that start with a strong action verb and say what was done, how, and the result "
+         "(only results already in the profile), mirror the JD's exact keywords where the candidate truly has them, "
+         "no filler or buzzwords, consistent tense, one idea per bullet. "
+         "Put the most relevant skills/experience/projects first (most relevant bullet first inside each role), "
+         "drop irrelevant ones. Aim for ONE page: at most 3 bullets for older roles, at most 3 projects, at most 12 skills. "
+         "If the candidate has substantial RELEVANT experience, up to TWO pages is fine: then up to 5 bullets for the "
+         "two most recent roles. Never pad; never exceed two pages. Group skills with the JD-relevant ones first. "
          "Copy company, title, dates, degrees, certifications and skill names exactly as in the profile; "
          "do not write any number that is not in the profile. "
          'Return JSON: {"resume": <same shape as the profile>, "match": {"score": 0-100, '
@@ -103,6 +109,26 @@ h2{font-size:9pt;text-transform:uppercase;letter-spacing:.18em;color:#1f3a5f;mar
 h1{font-size:18pt}header{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap;border-bottom:1px solid #999;padding-bottom:5px}
 .c{color:#444;font-size:9pt}h2{font-size:9.5pt;text-transform:uppercase;font-weight:700;background:#f0f0f0;padding:2px 6px;margin:10px 0 4px}
 .t{font-weight:700}.d{color:#555;font-size:9pt}.sub{color:#555}ul{padding-left:15px}li{margin:0}p{margin-bottom:3px}.item{margin-top:4px}""",
+    # no rules or colour, lots of air: reads clean in any viewer
+    "minimal": """body{font:10pt/1.5 Helvetica,Arial,sans-serif;color:#222}
+h1{font-size:22pt;font-weight:600;letter-spacing:-.01em}.c{color:#666;font-size:9pt;margin-top:3px}
+h2{font-size:9pt;text-transform:uppercase;letter-spacing:.2em;color:#888;margin:18px 0 6px;font-weight:600}
+.t{font-weight:600}.d{color:#888;font-size:9pt}.sub{color:#666}""",
+    # solid dark name band, strong section bars
+    "executive": """body{font:10pt/1.45 'Segoe UI',Arial,sans-serif;color:#1c1c1c;padding-top:0}
+header{background:#1b2430;color:#fff;margin:0 -30px;padding:22px 30px}h1{font-size:24pt;font-weight:600;letter-spacing:.02em}
+.c{color:#cfd6df;font-size:9pt;margin-top:4px}h2{font-size:10pt;text-transform:uppercase;letter-spacing:.1em;color:#1b2430;border-bottom:2px solid #1b2430;margin:16px 0 6px;padding-bottom:2px}
+.t{font-weight:700}.d{color:#555;font-size:9pt}.sub{color:#555}""",
+    # monospace accents for engineers, one green accent
+    "tech": """body{font:9.5pt/1.45 'Segoe UI',Arial,sans-serif;color:#1a1a1a}
+h1{font:700 20pt Consolas,'Courier New',monospace;color:#0b6b4d}.c{font:8.5pt Consolas,'Courier New',monospace;color:#555;margin-top:3px}
+header{border-bottom:2px solid #0b6b4d;padding-bottom:8px}h2{font:700 9.5pt Consolas,'Courier New',monospace;color:#0b6b4d;margin:14px 0 5px}h2:before{content:"// "}
+.t{font-weight:700}.d{font:8.5pt Consolas,'Courier New',monospace;color:#666}.sub{color:#555}li::marker{color:#0b6b4d}""",
+    # refined serif, small caps headings, thin double rule
+    "elegant": """body{font:10.5pt/1.45 'Palatino Linotype',Palatino,'Book Antiqua',Georgia,serif;color:#222}
+header{text-align:center;border-bottom:3px double #444;padding-bottom:8px}h1{font-size:24pt;font-weight:400;letter-spacing:.08em;font-variant:small-caps}.c{color:#555;font-size:9.5pt;margin-top:4px}
+h2{font-size:11pt;font-variant:small-caps;letter-spacing:.1em;font-weight:700;color:#333;margin:15px 0 5px;border-bottom:1px solid #bbb}
+.t{font-weight:700}.d{font-style:italic;color:#555}.sub{font-style:italic;color:#555}""",
 }
 
 
@@ -172,7 +198,7 @@ def render_pdf(r, template="classic", scale=1.0):
 
 
 # ---------------------------------------------------------------- one page (rule 1.3)
-BASE_PT = {"classic": 10.5, "modern": 10.0, "compact": 9.5}
+BASE_PT = {"classic": 10.5, "modern": 10.0, "compact": 9.5, "minimal": 10.0, "executive": 10.0, "tech": 9.5, "elegant": 10.5}
 MIN_PT = 9.0  # never shrink body text below this
 
 
@@ -197,9 +223,27 @@ def _trim_one(r):
     return any(s() for s in steps)
 
 
-def fit_one_page(r, template="classic"):
-    """-> (resume, pdf bytes, pages, flag). Shrinks type to 9pt first, then drops least relevant content.
-    flag is None when it fits on one A4 page, else a 'manual trim needed' message."""
+def page_fill(pdf):
+    """How full the last page is compared with the first (0..1), by text length."""
+    from pypdf import PdfReader
+    p = PdfReader(io.BytesIO(pdf)).pages
+    first = len(p[0].extract_text() or "") or 1
+    return min(1.0, len(p[-1].extract_text() or "") / first)
+
+
+MIN_SECOND_PAGE = 0.30  # a second page must be at least this full, or the resume is trimmed back to one page
+
+
+def fit_one_page(r, template="classic", pages="one"):
+    """-> (resume, pdf bytes, pages, flag).
+    pages='one': always one page (shrinks type to 9pt, then drops the least relevant content).
+    pages='auto': one page when it fits at a comfortable size; otherwise TWO pages if the second page is
+    substantial (>=30% full), so relevant content is kept at normal size instead of being cut. Never more than two.
+    flag is None when the result is fine, else a 'manual trim needed' message."""
+    if pages == "auto":
+        res = _fit_auto(r, template)
+        if res:
+            return res
     r = copy.deepcopy(r)
     floor = max(MIN_PT / BASE_PT.get(template, 10.5), 0.8)
     scales = [1.0] + [round(1.0 - (1.0 - floor) * i / 3, 3) for i in (1, 2, 3)]
@@ -222,6 +266,24 @@ def fit_one_page(r, template="classic"):
         pdf, pages = attempt(r, scales)
     flag = None if pages == 1 else f"Manual trim needed: still {pages} pages at {MIN_PT:g}pt"
     return r, pdf, pages, flag
+
+
+def _fit_auto(r, template):
+    """Comfortable 1 page, or a well-filled 2 pages at normal size. None = use the strict one-page fit."""
+    r = copy.deepcopy(r)
+    floor = max(MIN_PT / BASE_PT.get(template, 10.5), 0.8)
+    for sc in (1.0, max(0.96, floor), max(0.92, floor)):  # at most ~8% smaller: still easy to read
+        pdf = render_pdf(r, template, sc)
+        if pdf_pages(pdf) == 1:
+            return r, pdf, 1, None
+    pdf = render_pdf(r, template, 1.0)
+    n = pdf_pages(pdf)
+    while n > 2 and _trim_one(r):  # never more than two pages
+        pdf = render_pdf(r, template, 1.0)
+        n = pdf_pages(pdf)
+    if n == 2 and page_fill(pdf) >= MIN_SECOND_PAGE:
+        return r, pdf, 2, None
+    return None
 
 
 def render_docx(r):

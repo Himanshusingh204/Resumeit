@@ -34,13 +34,14 @@ run.bat
 
 ## Choose your AI
 
-Edit `.env`. `AI_PROVIDER=auto` picks the first one available.
+Edit `.env`. `AI_PROVIDER=auto` picks the first one available (Claude Code, Anthropic, OpenAI, then Gemini).
 
 | Provider | What you need |
 |---|---|
 | `claude_cli` | [Claude Code](https://claude.com/claude-code) installed and logged in (set `CLAUDE_BIN` if `claude` is not on PATH). No API key. |
 | `anthropic` | `ANTHROPIC_API_KEY` |
 | `openai` | `OPENAI_API_KEY` (not tested end to end) |
+| `gemini` | `GEMINI_API_KEY` (or `GOOGLE_API_KEY`), model via `GEMINI_MODEL` (default `gemini-2.5-flash`). Not tested against the live API. |
 
 Optional `CLAUDE_MODEL` / `ANTHROPIC_MODEL` / `OPENAI_MODEL` pick a cheaper or faster model. Each resume costs one AI call, so build the jobs you care about instead of everything at once.
 

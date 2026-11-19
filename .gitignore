@@ -1,7 +1,36 @@
+# Virtual environment & Python caches
 .venv/
-data/
-.env
+venv/
+env/
 __pycache__/
-jobs/
+*.py[cod]
+*$py.class
 .pytest_cache/
-*.pyc
+
+# Local sensitive user data & SQLite databases (Zero Data Leak)
+data/
+*.db
+*.sqlite
+*.sqlite3
+*.log
+
+# Tailored resumes, output directories & generated job files
+jobs/
+*.pdf
+*.docx
+
+# Environment variables & API credentials
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+
+# Editor & OS temporary files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.bak
+*.tmp
+*.swp

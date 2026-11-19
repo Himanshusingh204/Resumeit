@@ -1,448 +1,3285 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Resumeit</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@1,6..72,500&display=swap" rel="stylesheet">
-<script>(function(){var t='auto';try{t=localStorage.getItem('theme')||'auto'}catch(e){}
-document.documentElement.dataset.theme=t==='auto'?(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'):t})()</script>
-<style>
-/* Graphite neutrals + ink primary. Colour appears only as status (green / amber / red). No gradients, glows or tinted tiles. */
-:root{--bg:#FAFAF9;--panel:#FFFFFF;--hover:#F5F5F4;--line:#E7E5E4;--line2:#D6D3D1;--fg:#1C1917;--mut:#57534E;--faint:#6F6862;
---ink:#1C1917;--onink:#FAFAF9;--ring:#1C1917;
---ok:#166534;--okb:#F0FDF4;--wa:#92400E;--wab:#FFFBEB;--er:#B91C1C;--erb:#FEF2F2;--in:#1E40AF;--inb:#EFF6FF;
---sans:'Geist','Segoe UI Variable','Segoe UI',system-ui,sans-serif;--mono:'Geist Mono',ui-monospace,Consolas,monospace;--serif:'Newsreader',Georgia,serif;--float:0 12px 32px -8px rgba(0,0,0,.22)}
-:root[data-theme=dark]{--bg:#0C0A09;--panel:#141210;--hover:#1C1917;--line:#292524;--line2:#44403C;--fg:#F5F5F4;--mut:#B5AEA8;--faint:#9A938D;
---ink:#F5F5F4;--onink:#0C0A09;--ring:#F5F5F4;
---ok:#4ADE80;--okb:#0F2418;--wa:#FBBF24;--wab:#2A1F0A;--er:#F87171;--erb:#2B1212;--in:#7DB2FF;--inb:#101D33;--float:0 16px 40px -8px rgba(0,0,0,.7)}
-*{box-sizing:border-box}[hidden]{display:none!important}
-html{color-scheme:light;scroll-padding-top:84px}:root[data-theme=dark]{color-scheme:dark}
-body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 var(--sans);-webkit-font-smoothing:antialiased;overflow-x:hidden}
-button,input,select,textarea{font:inherit;color:inherit}
-:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
-svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px;flex:none}
-.mono{font-family:var(--mono)}.mut{color:var(--mut)}
-/* top bar */
-.top{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line)}
-.top>div{max-width:1280px;margin:0 auto;padding:0 24px;height:56px;display:flex;align-items:center;gap:8px}
-.logo{font:italic 500 23px/1 var(--serif);letter-spacing:-.02em;margin-right:auto}
-.ai{display:flex;align-items:center;gap:7px;font:12px var(--mono);color:var(--mut);margin-right:6px;background:none;border:1px solid transparent;border-radius:6px;padding:4px 8px;cursor:pointer}.ai:hover{background:var(--hover);color:var(--fg)}.ai i{width:7px;height:7px;border-radius:50%;background:var(--ok)}.ai.bad{color:var(--er);border-color:var(--er)}.ai.bad i{background:var(--er)}
-[aria-disabled=true]{opacity:.45;cursor:not-allowed}
-.how{padding-left:20px}.how li{margin:0 0 10px}.how code,.db code{font:12.5px var(--mono);background:var(--hover);border-radius:4px;padding:1px 5px}.db a{color:var(--fg)}
-.ack{border:1px solid var(--line2);border-radius:8px;padding:10px 12px;margin:0 0 10px;background:var(--hover)}
-/* controls */
-.btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border:1px solid var(--line2);background:var(--panel);border-radius:6px;cursor:pointer;font-weight:500;font-size:13px;text-decoration:none;color:var(--fg);white-space:nowrap;transition:background .12s,border-color .12s}
-.btn:hover{background:var(--hover)}.btn:active{transform:translateY(1px)}
-.btn.p{background:var(--ink);border-color:var(--ink);color:var(--onink)}.btn.p:hover{opacity:.88;background:var(--ink)}
-.btn.sm{height:28px;padding:0 10px;font-size:12.5px}.btn.ghost{border-color:transparent;background:none;color:var(--mut)}.btn.ghost:hover{background:var(--hover);color:var(--fg)}
-.btn.danger{color:var(--er)}.btn.full{width:100%;justify-content:center;height:38px;font-size:14px}.btn:disabled{opacity:.45;cursor:not-allowed}.btn.icon{width:32px;padding:0;justify-content:center}
-input[type=text],input[type=number],select,textarea{width:100%;height:34px;border:1px solid var(--line2);background:var(--panel);border-radius:6px;padding:0 10px;transition:border-color .12s}
-textarea{height:auto;padding:10px}select{cursor:pointer}
-input:focus,select:focus,textarea:focus,.chips:focus-within{border-color:var(--ink)}.chips:focus-within{outline:2px solid var(--ring);outline-offset:2px}.chips input:focus-visible{outline:none}
-input::placeholder,textarea::placeholder{color:var(--faint)}
-select.btn{padding:0 24px 0 10px;width:auto}
-/* layout */
-.page{max-width:1280px;margin:0 auto;padding:24px;display:grid;grid-template-columns:316px minmax(0,1fr);gap:28px;align-items:start}
-@media(max-width:940px){.page{grid-template-columns:minmax(0,1fr)}}
-.side{border:1px solid var(--line);background:var(--panel);border-radius:10px;position:sticky;top:80px;max-height:calc(100vh - 104px);overflow:auto}@media(max-width:940px){.side{position:static;max-height:none}}
-.sec{padding:18px;border-bottom:1px solid var(--line)}.sec:last-child{border:0}
-.lbl{font:500 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin:0 0 12px;display:flex;justify-content:space-between;align-items:center}
-.field{margin-top:12px;display:block}.field>span{display:block;font-size:12px;color:var(--mut);margin-bottom:5px}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
-.lock{opacity:.4;pointer-events:none;user-select:none}.note{font-size:12.5px;color:var(--wa);background:var(--wab);border-radius:6px;padding:8px 10px;margin-bottom:12px}
-.who b{display:block;font-size:15px}.who span{font-size:12.5px;color:var(--mut)}
-.tags{display:flex;gap:5px;flex-wrap:wrap;margin:10px 0}.t{font:11.5px var(--mono);padding:2px 7px;border:1px solid var(--line);border-radius:4px;color:var(--mut)}
-.drop{border:1px dashed var(--line2);border-radius:8px;padding:14px;text-align:center;color:var(--mut);cursor:pointer;font-size:13px;transition:.15s}.drop:hover,.drop.on{border-color:var(--ink);color:var(--fg);background:var(--hover)}
-.chips{display:flex;flex-wrap:wrap;gap:5px;border:1px solid var(--line2);background:var(--panel);border-radius:6px;padding:5px;min-height:34px}
-.chips input{flex:1;min-width:110px;height:22px;border:0;background:none;padding:0 4px}
-.chip{display:inline-flex;align-items:center;gap:3px;background:var(--hover);border:1px solid var(--line);border-radius:4px;padding:1px 3px 1px 8px;font-size:12.5px}
-.chip button{border:0;background:none;cursor:pointer;color:var(--mut);line-height:0;padding:3px}.chip button:hover{color:var(--fg)}
-.boards{display:flex;flex-wrap:wrap;gap:5px}.boards label{cursor:pointer}.boards label{position:relative}.boards input{position:absolute;opacity:0;width:1px;height:1px;margin:0}.boards input:focus-visible+span{outline:2px solid var(--ring);outline-offset:2px}.boards input:checked+span::before{content:'\2713  '}
-.boards span{display:block;padding:5px 10px;min-height:28px;border:1px solid var(--line2);border-radius:5px;font-size:12.5px;color:var(--mut);transition:.12s}
-.boards input:checked+span{background:var(--ink);border-color:var(--ink);color:var(--onink)}
-.fcheck,.mut:has(>input[type=checkbox]){display:inline-flex;align-items:center;gap:6px;min-height:24px}.check{display:flex;gap:8px;align-items:flex-start;font-size:13px;cursor:pointer;margin-top:12px}.check input{margin-top:3px;accent-color:var(--ink)}.check small{display:block;color:var(--mut);font-size:12px}
-details summary{cursor:pointer;color:var(--mut);font-size:12.5px;margin-top:12px}details summary:hover{color:var(--fg)}
-.bar{height:2px;background:var(--line);margin-top:12px;overflow:hidden}.bar i{display:block;height:100%;width:25%;background:var(--ink);animation:sl 1.3s infinite linear}@keyframes sl{from{transform:translateX(-100%)}to{transform:translateX(500%)}}
-.msg{font:12px var(--mono);color:var(--mut);margin-top:10px;word-break:break-word}
-/* main */
-.head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:14px}.head h2{font:600 20px/1.2 var(--sans);letter-spacing:-.01em;margin:0}.head p{margin:0;font:12.5px var(--mono);color:var(--mut)}
-.alert{display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:var(--erb);color:var(--er);border:1px solid var(--er);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:13px}.alert div{flex:1;min-width:220px}.alert b{display:block}.alert .btn{color:var(--fg)}
-.bar2{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin-bottom:0}
-.tabs{display:flex;gap:2px;overflow:auto}.tabs button{border:0;background:none;padding:9px 10px;color:var(--mut);cursor:pointer;font-size:13px;font-weight:500;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
-.tabs button b{font:400 11.5px var(--mono);margin-left:4px;color:var(--faint)}.tabs button:hover{color:var(--fg)}.tabs button.on{color:var(--fg);border-color:var(--ink)}
-.tools{display:flex;gap:8px;align-items:center;margin-left:auto;padding:6px 0;flex-wrap:wrap}.tools input{width:190px}.tools select{width:auto}
-.list{border:1px solid var(--line);border-top:0;background:var(--panel);border-radius:0 0 10px 10px}
-.job{display:grid;grid-template-columns:64px minmax(0,1fr);gap:16px;padding:14px 16px;border-top:1px solid var(--line);align-items:start;transition:background .12s}
-.job:first-child{border-top:0}.job:hover{background:var(--hover)}
-.job .act{grid-column:2;justify-content:flex-start;margin-top:2px}
-@media(max-width:720px){.job{grid-template-columns:56px minmax(0,1fr);gap:10px 12px}}
-.fit{font:500 17px/1 var(--mono)}.fit small{display:block;font:11px var(--mono);color:var(--faint);margin-top:5px;letter-spacing:.02em}
-.fit .m{display:block;height:3px;border-radius:2px;background:var(--line);margin-top:7px;overflow:hidden}.fit .m i{display:block;height:100%;background:var(--faint)}
-.fit.hi{color:var(--ok)}.fit.hi .m i{background:var(--ok)}.fit.mid{color:var(--wa)}.fit.mid .m i{background:var(--wa)}.fit.lo{color:var(--er)}.fit.lo .m i{background:var(--er)}
-.jt{font-weight:600;font-size:15px;line-height:1.35}.sub{color:var(--mut);font-size:13px;margin-top:2px}.sub a{color:var(--fg);text-decoration:underline;text-decoration-color:var(--line2);text-underline-offset:3px}
-.ch{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}.ch span{font:11.5px var(--mono);padding:2px 7px;border-radius:4px;border:1px solid var(--line);color:var(--mut)}
-.ch span{max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ch .y{color:var(--ok);border-color:transparent;background:var(--okb)}.ch .g{color:var(--wa);border-color:transparent;background:var(--wab)}
-.fl{display:inline-block;font-size:11px;padding:0 6px;border-radius:4px;background:var(--wab);color:var(--wa);margin-left:4px}
-.fl.bad{background:var(--erb);color:var(--er)}.trk{font-size:12px;padding:2px 4px}
-.df ins{background:var(--okb);color:var(--ok);text-decoration:none}.df del{background:var(--erb);color:var(--er)}.df li{margin:3px 0}
-.err{color:var(--er);font-size:12.5px;margin-top:6px}
-.act{display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
-.tag{font:500 11px/1 var(--mono);padding:4px 7px;border-radius:4px;border:1px solid var(--line);color:var(--mut)}
-.tag.done{color:var(--ok);background:var(--okb);border-color:transparent}.tag.error{color:var(--er);background:var(--erb);border-color:transparent}
-.tag.tailoring,.tag.queued{color:var(--in);background:var(--inb);border-color:transparent}.tag.skipped{color:var(--wa);background:var(--wab);border-color:transparent}
-.tag.tailoring{animation:pulse 1.2s infinite}@keyframes pulse{50%{opacity:.5}}
-.empty{padding:56px 20px;text-align:center;color:var(--mut)}.empty b{display:block;color:var(--fg);font-size:15px;margin-bottom:4px}
-.enter{animation:in .3s ease-out}@keyframes in{from{opacity:0}to{opacity:1}}
-/* a11y + first-run */
-.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-.skip{position:absolute;left:8px;top:-60px;z-index:100;background:var(--ink);color:var(--onink);padding:10px 14px;border-radius:6px}.skip:focus{top:8px}
-.tn{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.logo{margin:0 auto 0 0}
-h2.lbl{font-weight:500}.help{margin:-6px 0 12px;font-size:12.5px;color:var(--mut)}
-.drop.need{border-style:solid;border-color:var(--ink);color:var(--fg)}.drop:focus-visible{border-color:var(--ink)}
-.onb .now::after{content:"You are here";display:block;font:500 11px var(--mono);margin-top:6px;color:var(--fg)}.onb .btn{margin-top:8px}
-.job{content-visibility:auto;contain-intrinsic-size:auto 170px}
-.more{padding:14px;text-align:center;border-top:1px solid var(--line)}
-.tabs button:focus-visible{outline-offset:-2px}
-@media(pointer:coarse),(max-width:600px){.btn,.btn.sm,select.btn,input[type=text],input[type=number],select{min-height:44px}.btn.icon,.btn.sm.icon{min-width:44px!important}.tabs button{min-height:44px}.chip button{min-width:44px;min-height:32px}.boards span{min-height:44px;display:flex;align-items:center}.fcheck,.mut:has(>input[type=checkbox]),.check{min-height:44px}.drop{padding:22px}}
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Resumeit — AI-Powered Tailored Resume Builder & Job Matcher</title>
+  
+  <!-- SEO & Social Metadata -->
+  <meta name="description" content="Resumeit searches top job boards and generates tailored, truth-guarded, one-page resumes matched to job descriptions without fabricating facts.">
+  <meta name="keywords" content="resume builder, tailored resume, ATS resume, job matcher, truth guard, one page resume, local AI resume">
+  <meta name="author" content="Resumeit Team">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="http://127.0.0.1:8000/">
 
-/* chat */
-.chat{border:1px solid var(--line);border-radius:10px;padding:12px;margin:0 0 12px}.chat h3{margin:0 0 2px;font-size:14px}.chn{font-size:12.5px;margin:0 0 8px}
-#chl{max-height:170px;overflow:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:8px}#chl:empty{display:none}
-#chl div{padding:7px 10px;border-radius:8px;font-size:13.5px;line-height:1.4;max-width:90%;overflow-wrap:anywhere}
-#chl .u{align-self:flex-end;background:var(--ink);color:var(--onink)}#chl .a{background:var(--okb);color:var(--fg)}#chl .e{background:var(--erb);color:var(--er)}#chl .w{color:var(--mut);font-style:italic}
-.chat .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}.chat form{display:flex;gap:8px;align-items:flex-end}.chat textarea{flex:1;min-height:44px;resize:vertical}
-@media(max-width:600px){.chat form{flex-direction:column;align-items:stretch}#chl div{max-width:100%}}
-/* polish */
-:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
-.top>div{min-height:56px;height:auto;flex-wrap:wrap;padding-top:8px;padding-bottom:8px}
-@media(max-width:600px){.top>div,.page{padding-left:12px;padding-right:12px}.page{gap:16px}.tools input{width:100%}.tools{margin-left:0;width:100%}.top select.btn{max-width:46vw}}
-.menu{position:relative}.menu>summary{list-style:none;margin:0;display:inline-flex;align-items:center;color:var(--fg)}.menu>summary::-webkit-details-marker{display:none}
-.menu .pop{position:absolute;right:0;top:34px;z-index:30;background:var(--panel);border:1px solid var(--line2);border-radius:8px;box-shadow:var(--float);padding:6px;display:flex;flex-direction:column;gap:4px;min-width:190px}
-.menu .pop .btn{justify-content:flex-start;border-color:transparent}
-.onb{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}@media(max-width:720px){.onb{grid-template-columns:1fr}}
-.onb>div{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:12px 14px;font-size:13px;color:var(--mut)}
-.onb b{display:block;color:var(--fg);font-size:14px;margin-bottom:2px}.onb .n{font:500 11px var(--mono);letter-spacing:.08em}
-.onb .now{border-color:var(--ink)}.onb .ok{opacity:.6}.onb .ok .n::after{content:" - done";color:var(--ok)}
-.fpanel{border:1px solid var(--line);border-bottom:0;background:var(--panel);padding:0 12px}.fpanel>summary{margin:0;padding:9px 0;color:var(--fg);font-weight:500}
-.fpanel>summary b{font:500 11px var(--mono);background:var(--ink);color:var(--onink);border-radius:9px;padding:1px 7px;margin-left:6px}
-.fpanel .bar2{border:0;padding-bottom:10px}
-.skel div{height:64px;margin:14px 16px;border-radius:6px;background:linear-gradient(90deg,var(--hover),var(--line),var(--hover));background-size:200% 100%;animation:sh 1.2s infinite linear}@keyframes sh{to{background-position:-200% 0}}
-.empty .btn{margin-top:12px}
-/* floating layers */
-dialog{border:1px solid var(--line2);border-radius:12px;background:var(--panel);color:var(--fg);padding:0;width:min(900px,94vw);box-shadow:var(--float)}
-dialog::backdrop{background:rgba(0,0,0,.5)}
-.dh{display:flex;align-items:center;gap:8px;padding:12px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}.dh b{flex:1;font-size:15px}.dh select{width:auto}.db{padding:20px;max-height:74vh;overflow:auto}
-iframe{width:100%;height:68vh;border:1px solid var(--line);border-radius:8px;background:#fff}
-.iss{padding:10px 0;border-bottom:1px solid var(--line);font-size:13px}.iss b{font:500 12px var(--mono);color:var(--er)}
-#toasts{position:fixed;right:20px;bottom:20px;display:flex;flex-direction:column;gap:8px;z-index:99}
-.toast{background:var(--ink);color:var(--onink);padding:10px 14px;border-radius:8px;font-size:13px;max-width:380px;box-shadow:var(--float);animation:in .2s}.toast.bad{background:var(--erb);color:var(--er);border:1px solid var(--er)}
-::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:var(--line2);border-radius:8px;border:2px solid var(--bg)}
-@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
-</style></head><body>
-<a class="skip" href="#main">Skip to jobs</a>
-<header class="top"><div>
-  <h1 class="logo">Resumeit</h1><nav class="tn" aria-label="Tools and settings">
-  <button type="button" class="ai" id="aiPill" onclick="aiHelp()" aria-haspopup="dialog" aria-label="AI status and setup help"><i></i><span id="aiT">AI</span></button>
-  <select id="tpl" class="btn sm" aria-label="Resume template" title="Resume template used for PDFs"><option value="classic">Template: Classic</option><option value="modern">Template: Modern</option><option value="compact">Template: Compact</option><option value="minimal">Template: Minimal</option><option value="executive">Template: Executive</option><option value="tech">Template: Tech</option><option value="elegant">Template: Elegant</option></select>
-  <select id="pg" class="btn sm" aria-label="Resume length" title="Resume length" onchange="post('/api/pages',{p:this.value}).catch(()=>{})"><option value="auto">Length: 1 page (2 if needed)</option><option value="one">Length: always 1 page</option></select>
-  <details class="menu" id="moreM"><summary class="btn sm" aria-label="More actions" role="button">More</summary><div class="pop">
-  <button class="btn sm" onclick="openFolder()" title="Every finished resume is saved here">Jobs folder</button>
-  <a class="btn sm" href="/api/backup" title="Zip of your database and jobs folder">Backup</a>
-  <button class="btn sm" onclick="refit()" title="Re-fit already built resumes to one page. No AI calls.">Fix 2-page PDFs</button></div></details>
-  <button class="btn sm" onclick="openIssues()">Issues <b class="mono" id="ic">0</b></button>
-  <button class="btn sm icon" id="themeB" aria-label="Toggle theme"></button>
-</nav></div></header>
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Resumeit — AI-Powered Tailored Resume Builder">
+  <meta property="og:description" content="Search top job boards and generate tailored, strictly verified one-page resumes matched to job descriptions.">
+  <meta property="og:site_name" content="Resumeit">
+  <meta property="og:locale" content="en_US">
 
-<div class="page">
-<aside class="side" aria-label="Set up and search">
-  <div class="sec" id="c1">
-    <h2 class="lbl">Step 1 · Your resume <span id="s1"></span></h2><p class="help">Start here. We read it once so jobs can be matched to it.</p>
-    <div id="profView"></div>
-    <div class="drop" id="drop" role="button" tabindex="0" aria-describedby="dropH" onclick="$('file').click()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();$('file').click()}"><b id="dropT">Drop your resume here</b><div class="mut" id="dropH">PDF, DOCX or TXT. Click, press Enter, or drop a file.</div></div>
-    <input type="file" id="file" accept=".pdf,.docx,.txt,.md" hidden>
-    <div class="row" style="margin-top:8px"><button class="btn sm ghost" onclick="$('tdlg').showModal()">Paste text</button><button class="btn sm ghost danger" id="delRes" onclick="delResume()">Delete resume</button></div>
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Resumeit — AI-Powered Tailored Resume Builder">
+  <meta name="twitter:description" content="Search top job boards and generate tailored, strictly verified one-page resumes matched to job descriptions.">
+
+  <!-- Adaptive Theme Color for Mobile Browsers -->
+  <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#09090b" media="(prefers-color-scheme: dark)">
+
+  <!-- Inline SVG Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f172a'/%3E%3Cpath d='M8 9a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V9z' fill='none' stroke='%2338bdf8' stroke-width='2'/%3E%3Cline x1='12' y1='12' x2='20' y2='12' stroke='%23f8fafc' stroke-width='2' stroke-linecap='round'/%3E%3Cline x1='12' y1='16' x2='18' y2='16' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round'/%3E%3Cline x1='12' y1='20' x2='16' y2='20' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+
+  <!-- Structured Data (JSON-LD) for Search Engines -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Resumeit",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "All",
+    "description": "Tailored, truth-guarded, one-page resumes for any job description."
+  }
+  </script>
+
+  <!-- Typography & Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@1,6..72,500;1,6..72,600&display=swap" rel="stylesheet">
+  
+  <script>
+    // Immediate Theme Initialization to avoid FOUC (Flash of Unstyled Content)
+    (function initTheme() {
+      var savedTheme = 'auto';
+      try {
+        savedTheme = localStorage.getItem('theme') || 'auto';
+      } catch (err) {}
+      
+      var isDark = savedTheme === 'auto'
+        ? window.matchMedia('(prefers-color-scheme: dark)').matches
+        : savedTheme === 'dark';
+        
+      document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
+    })();
+  </script>
+
+  <style>
+    /* ==========================================================================
+       Design System Variables (Light & Dark Themes)
+       ========================================================================== */
+    :root {
+      /* Neutrals & Surfaces */
+      --bg: #f8fafc;
+      --bg-subtle: #f1f5f9;
+      --panel: #ffffff;
+      --panel-raised: #ffffff;
+      --hover: #f1f5f9;
+      --hover-subtle: #f8fafc;
+      --line: #e2e8f0;
+      --line2: #cbd5e1;
+      --fg: #0f172a;
+      --mut: #64748b;
+      --faint: #94a3b8;
+      --ink: #0f172a;
+      --onink: #ffffff;
+      --ring: #0f172a;
+      
+      /* Primary Brand / Accent */
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --accent-subtle: #eff6ff;
+      
+      /* Status Colors */
+      --ok: #166534;
+      --okb: #f0fdf4;
+      --ok-border: #bbf7d0;
+      
+      --wa: #92400e;
+      --wab: #fffbeb;
+      --wa-border: #fde68a;
+      
+      --er: #b91c1c;
+      --erb: #fef2f2;
+      --er-border: #fecaca;
+      
+      --in: #1e40af;
+      --inb: #eff6ff;
+      --in-border: #bfdbfe;
+      
+      /* Elevation & Shadows */
+      --shadow-xs: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+      --shadow-sm: 0 1px 3px 0 rgba(15, 23, 42, 0.07), 0 1px 2px -1px rgba(15, 23, 42, 0.06);
+      --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
+      --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.04);
+      --float: 0 18px 38px -10px rgba(15, 23, 42, 0.16);
+      
+      /* Border Radii */
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-xl: 16px;
+      
+      /* Typography */
+      --sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', system-ui, Roboto, sans-serif;
+      --mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      --serif: 'Newsreader', Charter, Georgia, serif;
+    }
+
+    :root[data-theme="dark"] {
+      /* Neutrals & Surfaces */
+      --bg: #09090b;
+      --bg-subtle: #121215;
+      --panel: #141418;
+      --panel-raised: #1c1c22;
+      --hover: #1f1f26;
+      --hover-subtle: #18181e;
+      --line: #27272a;
+      --line2: #3f3f46;
+      --fg: #fafafa;
+      --mut: #a1a1aa;
+      --faint: #71717a;
+      --ink: #fafafa;
+      --onink: #09090b;
+      --ring: #fafafa;
+      
+      /* Primary Brand / Accent */
+      --accent: #3b82f6;
+      --accent-hover: #60a5fa;
+      --accent-subtle: #172554;
+      
+      /* Status Colors */
+      --ok: #4ade80;
+      --okb: #052e16;
+      --ok-border: #14532d;
+      
+      --wa: #fbbf24;
+      --wab: #3a1d05;
+      --wa-border: #78350f;
+      
+      --er: #f87171;
+      --erb: #3b0d0c;
+      --er-border: #7f1d1d;
+      
+      --in: #60a5fa;
+      --inb: #0f2552;
+      --in-border: #1e3a8a;
+      
+      /* Dark Elevation */
+      --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.6);
+      --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.6), 0 1px 2px -1px rgba(0, 0, 0, 0.6);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.65), 0 2px 4px -2px rgba(0, 0, 0, 0.65);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.7), 0 4px 6px -4px rgba(0, 0, 0, 0.7);
+      --float: 0 20px 48px -10px rgba(0, 0, 0, 0.85);
+    }
+
+    /* ==========================================================================
+       Base & Reset
+       ========================================================================== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+    
+    [hidden] {
+      display: none !important;
+    }
+    
+    html {
+      color-scheme: light;
+      scroll-padding-top: 84px;
+    }
+    
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+    }
+    
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 14px/1.55 var(--sans);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+    }
+    
+    button, input, select, textarea {
+      font: inherit;
+      color: inherit;
+    }
+    
+    :focus-visible {
+      outline: 2px solid var(--ring);
+      outline-offset: 2px;
+    }
+    
+    svg {
+      width: 15px;
+      height: 15px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      vertical-align: -3px;
+      flex: none;
+    }
+    
+    .mono {
+      font-family: var(--mono);
+      font-feature-settings: "zero" 1;
+    }
+    
+    .mut {
+      color: var(--mut);
+    }
+
+    /* ==========================================================================
+       Header & Top Navigation
+       ========================================================================== */
+    .top {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      background: var(--bg);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    
+    .top > div {
+      max-width: 1380px;
+      margin: 0 auto;
+      padding: 10px 24px;
+      min-height: 60px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: inherit;
+      margin-right: auto;
+    }
+    
+    .logo {
+      font: italic 600 24px/1 var(--serif);
+      letter-spacing: -0.025em;
+      margin: 0;
+      color: var(--fg);
+    }
+    
+    .badge {
+      font: 500 11px/1.2 var(--mono);
+      padding: 3px 7px;
+      border-radius: var(--radius-sm);
+      background: var(--hover);
+      border: 1px solid var(--line);
+      color: var(--mut);
+      letter-spacing: 0.02em;
+    }
+    
+    .tn {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    
+    .ai {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font: 12px/1 var(--mono);
+      color: var(--mut);
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      padding: 6px 10px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    
+    .ai:hover {
+      background: var(--hover);
+      color: var(--fg);
+      border-color: var(--line2);
+    }
+    
+    .ai i {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--ok);
+      box-shadow: 0 0 0 2px var(--okb);
+    }
+    
+    .ai.bad {
+      color: var(--er);
+      border-color: var(--er);
+      background: var(--erb);
+    }
+    
+    .ai.bad i {
+      background: var(--er);
+      box-shadow: 0 0 0 2px var(--erb);
+    }
+
+    [aria-disabled="true"] {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    
+    .how {
+      padding-left: 22px;
+      margin: 12px 0;
+    }
+    
+    .how li {
+      margin: 0 0 10px;
+      line-height: 1.5;
+    }
+    
+    .how code, .db code {
+      font: 12.5px var(--mono);
+      background: var(--hover);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 2px 6px;
+    }
+    
+    .db a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.15s;
+    }
+    
+    .db a:hover {
+      border-color: currentColor;
+    }
+    
+    .ack {
+      border: 1px solid var(--line2);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      margin: 0 0 12px;
+      background: var(--hover);
+      transition: border-color 0.15s;
+    }
+    
+    .ack:hover {
+      border-color: var(--ink);
+    }
+
+    /* ==========================================================================
+       Controls & Button Styles
+       ========================================================================== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 34px;
+      padding: 0 13px;
+      border: 1px solid var(--line2);
+      background: var(--panel);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 13px;
+      text-decoration: none;
+      color: var(--fg);
+      white-space: nowrap;
+      transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: var(--shadow-xs);
+    }
+    
+    .btn:hover {
+      background: var(--hover);
+      border-color: var(--line2);
+      color: var(--fg);
+    }
+    
+    .btn:active {
+      transform: translateY(1px);
+    }
+    
+    .btn.p {
+      background: var(--ink);
+      border-color: var(--ink);
+      color: var(--onink);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    }
+    
+    .btn.p:hover {
+      opacity: 0.92;
+      background: var(--ink);
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.16);
+    }
+    
+    .btn.sm {
+      height: 30px;
+      padding: 0 10px;
+      font-size: 12.5px;
+      border-radius: var(--radius-sm);
+    }
+    
+    .btn.ghost {
+      border-color: transparent;
+      background: none;
+      color: var(--mut);
+      box-shadow: none;
+    }
+    
+    .btn.ghost:hover {
+      background: var(--hover);
+      color: var(--fg);
+      border-color: transparent;
+    }
+    
+    .btn.danger {
+      color: var(--er);
+    }
+    
+    .btn.danger:hover {
+      background: var(--erb);
+      border-color: var(--er-border);
+    }
+    
+    .btn.full {
+      width: 100%;
+      justify-content: center;
+      height: 40px;
+      font-size: 14px;
+      border-radius: var(--radius-md);
+    }
+    
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    
+    .btn.icon {
+      width: 34px;
+      padding: 0;
+      justify-content: center;
+    }
+    
+    .btn.sm.icon {
+      width: 30px;
+      padding: 0;
+      justify-content: center;
+    }
+
+    input[type="text"], input[type="number"], select, textarea {
+      width: 100%;
+      height: 36px;
+      border: 1px solid var(--line2);
+      background: var(--panel);
+      border-radius: var(--radius-md);
+      padding: 0 11px;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      box-shadow: var(--shadow-xs);
+    }
+    
+    textarea {
+      height: auto;
+      padding: 10px 12px;
+      line-height: 1.5;
+    }
+    
+    select {
+      cursor: pointer;
+      padding-right: 26px;
+    }
+    
+    input:focus, select:focus, textarea:focus, .chips:focus-within {
+      border-color: var(--ink);
+      box-shadow: 0 0 0 1px var(--ink);
+    }
+    
+    .chips:focus-within {
+      outline: 2px solid var(--ring);
+      outline-offset: 2px;
+    }
+    
+    .chips input:focus-visible {
+      outline: none;
+    }
+    
+    input::placeholder, textarea::placeholder {
+      color: var(--faint);
+    }
+    
+    select.btn {
+      padding: 0 24px 0 10px;
+      width: auto;
+    }
+
+    /* ==========================================================================
+       App Layout (Sidebar & Main Content)
+       ========================================================================== */
+    .page {
+      max-width: 1380px;
+      margin: 0 auto;
+      padding: 24px;
+      display: grid;
+      grid-template-columns: 330px minmax(0, 1fr);
+      gap: 28px;
+      align-items: start;
+    }
+    
+    @media (max-width: 980px) {
+      .page {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 20px;
+        padding: 16px;
+      }
+    }
+    
+    .side {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      position: sticky;
+      top: 84px;
+      max-height: calc(100vh - 108px);
+      overflow: auto;
+    }
+    
+    @media (max-width: 980px) {
+      .side {
+        position: static;
+        max-height: none;
+      }
+    }
+    
+    .sec {
+      padding: 20px;
+      border-bottom: 1px solid var(--line);
+    }
+    
+    .sec:last-child {
+      border: 0;
+    }
+    
+    .lbl {
+      font: 600 11.5px/1 var(--mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--mut);
+      margin: 0 0 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .lbl .step-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--hover);
+      font-size: 10.5px;
+      color: var(--fg);
+      font-weight: 600;
+    }
+    
+    .field {
+      margin-top: 12px;
+      display: block;
+    }
+    
+    .field > span {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--mut);
+      margin-bottom: 5px;
+    }
+    
+    .two {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    
+    .row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    
+    .lock {
+      opacity: 0.4;
+      pointer-events: none;
+      user-select: none;
+    }
+    
+    .note {
+      font-size: 12.5px;
+      color: var(--wa);
+      background: var(--wab);
+      border: 1px solid var(--wa-border);
+      border-radius: var(--radius-md);
+      padding: 9px 12px;
+      margin-bottom: 12px;
+      line-height: 1.4;
+    }
+    
+    .who {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: var(--hover-subtle);
+      margin-bottom: 12px;
+    }
+    
+    .who b {
+      display: block;
+      font-size: 15px;
+      color: var(--fg);
+    }
+    
+    .who span {
+      font-size: 12.5px;
+      color: var(--mut);
+      display: block;
+      margin-top: 2px;
+    }
+    
+    .tags {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+      margin: 10px 0;
+    }
+    
+    .t {
+      font: 11.5px var(--mono);
+      padding: 2px 8px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      color: var(--mut);
+      background: var(--panel);
+    }
+    
+    .drop {
+      border: 1.5px dashed var(--line2);
+      border-radius: var(--radius-lg);
+      padding: 20px 16px;
+      text-align: center;
+      color: var(--mut);
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.15s ease;
+      background: var(--panel);
+    }
+    
+    .drop:hover, .drop.on {
+      border-color: var(--ink);
+      color: var(--fg);
+      background: var(--hover);
+    }
+    
+    .drop.need {
+      border-style: solid;
+      border-color: var(--ink);
+      color: var(--fg);
+      background: var(--hover-subtle);
+    }
+    
+    .drop:focus-visible {
+      border-color: var(--ink);
+      outline: 2px solid var(--ring);
+      outline-offset: 2px;
+    }
+    
+    .drop b {
+      display: block;
+      color: var(--fg);
+      font-size: 13.5px;
+      margin-bottom: 3px;
+    }
+    
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      border: 1px solid var(--line2);
+      background: var(--panel);
+      border-radius: var(--radius-md);
+      padding: 6px;
+      min-height: 38px;
+      box-shadow: var(--shadow-xs);
+    }
+    
+    .chips input {
+      flex: 1;
+      min-width: 110px;
+      height: 24px;
+      border: 0;
+      background: none;
+      padding: 0 4px;
+      box-shadow: none;
+    }
+    
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: var(--hover);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      padding: 2px 4px 2px 8px;
+      font-size: 12px;
+      color: var(--fg);
+    }
+    
+    .chip button {
+      border: 0;
+      background: none;
+      cursor: pointer;
+      color: var(--mut);
+      line-height: 0;
+      padding: 3px;
+      border-radius: 3px;
+    }
+    
+    .chip button:hover {
+      color: var(--er);
+      background: var(--erb);
+    }
+    
+    .boards {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    
+    .boards label {
+      cursor: pointer;
+      position: relative;
+    }
+    
+    .boards input {
+      position: absolute;
+      opacity: 0;
+      width: 1px;
+      height: 1px;
+      margin: 0;
+    }
+    
+    .boards input:focus-visible + span {
+      outline: 2px solid var(--ring);
+      outline-offset: 2px;
+    }
+    
+    .boards input:checked + span::before {
+      content: '\2713  ';
+      font-weight: 700;
+    }
+    
+    .boards span {
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 10px;
+      min-height: 28px;
+      border: 1px solid var(--line2);
+      border-radius: var(--radius-sm);
+      font-size: 12.5px;
+      color: var(--mut);
+      background: var(--panel);
+      transition: all 0.12s;
+    }
+    
+    .boards input:checked + span {
+      background: var(--ink);
+      border-color: var(--ink);
+      color: var(--onink);
+      box-shadow: var(--shadow-xs);
+    }
+
+    .fcheck, .mut:has(> input[type="checkbox"]) {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 24px;
+    }
+    
+    .check {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      font-size: 13px;
+      cursor: pointer;
+      margin-top: 12px;
+    }
+    
+    .check input {
+      margin-top: 3px;
+      accent-color: var(--ink);
+      width: 16px;
+      height: 16px;
+      flex: none;
+    }
+    
+    .check small {
+      display: block;
+      color: var(--mut);
+      font-size: 12px;
+      line-height: 1.4;
+      margin-top: 2px;
+    }
+    
+    details summary {
+      cursor: pointer;
+      color: var(--mut);
+      font-size: 13px;
+      font-weight: 500;
+      margin-top: 12px;
+      transition: color 0.12s;
+    }
+    
+    details summary:hover {
+      color: var(--fg);
+    }
+    
+    .bar {
+      height: 3px;
+      background: var(--line);
+      margin-top: 12px;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    
+    .bar i {
+      display: block;
+      height: 100%;
+      width: 25%;
+      background: var(--accent);
+      border-radius: 2px;
+      animation: sl 1.3s infinite linear;
+    }
+    
+    @keyframes sl {
+      from { transform: translateX(-100%); }
+      to { transform: translateX(500%); }
+    }
+    
+    .msg {
+      font: 12px/1.4 var(--mono);
+      color: var(--mut);
+      margin-top: 10px;
+      word-break: break-word;
+    }
+
+    /* ==========================================================================
+       Main Feed & Job Cards
+       ========================================================================== */
+    .head {
+      display: flex;
+      align-items: baseline;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    
+    .head h2 {
+      font: 600 22px/1.2 var(--sans);
+      letter-spacing: -0.02em;
+      margin: 0;
+    }
+    
+    .head p {
+      margin: 0;
+      font: 12.5px var(--mono);
+      color: var(--mut);
+    }
+    
+    .alert {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      background: var(--erb);
+      color: var(--er);
+      border: 1px solid var(--er-border);
+      border-radius: var(--radius-lg);
+      padding: 14px 16px;
+      margin-bottom: 18px;
+      font-size: 13px;
+    }
+    
+    .alert div {
+      flex: 1;
+      min-width: 220px;
+    }
+    
+    .alert b {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 2px;
+    }
+    
+    .alert .btn {
+      color: var(--fg);
+    }
+
+    .bar2 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 0;
+    }
+    
+    .tabs {
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+      padding-bottom: 1px;
+    }
+    
+    .tabs button {
+      border: 0;
+      background: none;
+      padding: 9px 12px;
+      color: var(--mut);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      white-space: nowrap;
+      transition: all 0.12s;
+    }
+    
+    .tabs button b {
+      font: 500 11px var(--mono);
+      margin-left: 5px;
+      padding: 1px 6px;
+      border-radius: 10px;
+      background: var(--hover);
+      color: var(--mut);
+      transition: all 0.12s;
+    }
+    
+    .tabs button:hover {
+      color: var(--fg);
+    }
+    
+    .tabs button:hover b {
+      background: var(--line);
+      color: var(--fg);
+    }
+    
+    .tabs button.on {
+      color: var(--fg);
+      border-color: var(--ink);
+      font-weight: 600;
+    }
+    
+    .tabs button.on b {
+      background: var(--ink);
+      color: var(--onink);
+    }
+    
+    .tabs button:focus-visible {
+      outline-offset: -2px;
+    }
+
+    .tools {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-left: auto;
+      padding: 6px 0;
+      flex-wrap: wrap;
+    }
+    
+    .tools input {
+      width: 210px;
+    }
+    
+    .tools select {
+      width: auto;
+    }
+
+    .list {
+      border: 1px solid var(--line);
+      border-top: 0;
+      background: var(--panel);
+      border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+    }
+    
+    .job {
+      display: grid;
+      grid-template-columns: 72px minmax(0, 1fr);
+      gap: 16px;
+      padding: 16px 18px;
+      border-top: 1px solid var(--line);
+      align-items: start;
+      transition: background 0.15s ease;
+    }
+    
+    .job:first-child {
+      border-top: 0;
+    }
+    
+    .job:hover {
+      background: var(--hover-subtle);
+    }
+    
+    .job .act {
+      grid-column: 2;
+      justify-content: flex-start;
+      margin-top: 6px;
+    }
+    
+    @media (max-width: 720px) {
+      .job {
+        grid-template-columns: 56px minmax(0, 1fr);
+        gap: 12px;
+        padding: 14px;
+      }
+      .job .act {
+        grid-column: 1 / -1;
+      }
+    }
+
+    .fit {
+      font: 600 18px/1 var(--mono);
+      text-align: center;
+      padding: 6px;
+      border-radius: var(--radius-md);
+      background: var(--hover);
+      border: 1px solid var(--line);
+    }
+    
+    .fit small {
+      display: block;
+      font: 500 10.5px var(--mono);
+      color: var(--mut);
+      margin-top: 4px;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+    
+    .fit .m {
+      display: block;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--line2);
+      margin-top: 6px;
+      overflow: hidden;
+    }
+    
+    .fit .m i {
+      display: block;
+      height: 100%;
+      background: var(--faint);
+      border-radius: 2px;
+    }
+    
+    .fit.hi {
+      color: var(--ok);
+      background: var(--okb);
+      border-color: var(--ok-border);
+    }
+    .fit.hi .m i { background: var(--ok); }
+    
+    .fit.mid {
+      color: var(--wa);
+      background: var(--wab);
+      border-color: var(--wa-border);
+    }
+    .fit.mid .m i { background: var(--wa); }
+    
+    .fit.lo {
+      color: var(--er);
+      background: var(--erb);
+      border-color: var(--er-border);
+    }
+    .fit.lo .m i { background: var(--er); }
+
+    .jt {
+      font-weight: 600;
+      font-size: 15.5px;
+      line-height: 1.35;
+      color: var(--fg);
+    }
+    
+    .sub {
+      color: var(--mut);
+      font-size: 13px;
+      margin-top: 3px;
+    }
+    
+    .sub a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.15s;
+    }
+    
+    .sub a:hover {
+      border-color: currentColor;
+    }
+    
+    .ch {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    
+    .ch span {
+      font: 11.5px/1.3 var(--mono);
+      padding: 2px 8px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--line);
+      color: var(--mut);
+      background: var(--panel);
+      max-width: 260px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    
+    .ch .y {
+      color: var(--ok);
+      border-color: var(--ok-border);
+      background: var(--okb);
+      font-weight: 500;
+    }
+    
+    .ch .g {
+      color: var(--wa);
+      border-color: var(--wa-border);
+      background: var(--wab);
+      font-weight: 500;
+    }
+
+    .fl {
+      display: inline-block;
+      font-size: 11px;
+      padding: 1px 6px;
+      border-radius: var(--radius-sm);
+      background: var(--wab);
+      border: 1px solid var(--wa-border);
+      color: var(--wa);
+      margin-left: 4px;
+    }
+    
+    .fl.bad {
+      background: var(--erb);
+      border-color: var(--er-border);
+      color: var(--er);
+    }
+    
+    .trk {
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: var(--radius-sm);
+      background: var(--panel);
+      border: 1px solid var(--line2);
+    }
+
+    .df ins {
+      background: var(--okb);
+      color: var(--ok);
+      text-decoration: none;
+      padding: 1px 3px;
+      border-radius: 3px;
+    }
+    
+    .df del {
+      background: var(--erb);
+      color: var(--er);
+      padding: 1px 3px;
+      border-radius: 3px;
+    }
+    
+    .df li {
+      margin: 4px 0;
+    }
+    
+    .err {
+      color: var(--er);
+      font-size: 12.5px;
+      margin-top: 6px;
+      background: var(--erb);
+      padding: 6px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--er-border);
+    }
+
+    .act {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    
+    .tag {
+      font: 600 11px/1 var(--mono);
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--line);
+      color: var(--mut);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    
+    .tag.done {
+      color: var(--ok);
+      background: var(--okb);
+      border-color: var(--ok-border);
+    }
+    
+    .tag.error {
+      color: var(--er);
+      background: var(--erb);
+      border-color: var(--er-border);
+    }
+    
+    .tag.tailoring, .tag.queued {
+      color: var(--in);
+      background: var(--inb);
+      border-color: var(--in-border);
+    }
+    
+    .tag.skipped {
+      color: var(--wa);
+      background: var(--wab);
+      border-color: var(--wa-border);
+    }
+    
+    .tag.tailoring {
+      animation: pulse 1.2s infinite;
+    }
+    
+    @keyframes pulse {
+      50% { opacity: 0.5; }
+    }
+
+    .empty {
+      padding: 64px 20px;
+      text-align: center;
+      color: var(--mut);
+    }
+    
+    .empty b {
+      display: block;
+      color: var(--fg);
+      font-size: 16px;
+      margin-bottom: 6px;
+    }
+    
+    .enter {
+      animation: in 0.25s ease-out;
+    }
+    
+    @keyframes in {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: none; }
+    }
+
+    /* ==========================================================================
+       Accessibility & Onboarding
+       ========================================================================== */
+    .sr {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
+    
+    .skip {
+      position: absolute;
+      left: 12px;
+      top: -60px;
+      z-index: 100;
+      background: var(--ink);
+      color: var(--onink);
+      padding: 10px 16px;
+      border-radius: var(--radius-md);
+      font-weight: 500;
+      box-shadow: var(--shadow-lg);
+      transition: top 0.15s;
+    }
+    
+    .skip:focus {
+      top: 12px;
+    }
+    
+    h2.lbl {
+      font-weight: 600;
+    }
+    
+    .help {
+      margin: -4px 0 12px;
+      font-size: 12.5px;
+      color: var(--mut);
+      line-height: 1.4;
+    }
+    
+    .onb .now::after {
+      content: "You are here";
+      display: block;
+      font: 600 11px var(--mono);
+      margin-top: 6px;
+      color: var(--accent);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    
+    .onb .btn {
+      margin-top: 8px;
+    }
+    
+    .job {
+      content-visibility: auto;
+      contain-intrinsic-size: auto 170px;
+    }
+    
+    .more {
+      padding: 16px;
+      text-align: center;
+      border-top: 1px solid var(--line);
+      background: var(--hover-subtle);
+    }
+
+    /* ==========================================================================
+       Resume Customization Chat Section
+       ========================================================================== */
+    .chat {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      padding: 14px;
+      margin: 0 0 14px;
+      background: var(--hover-subtle);
+    }
+    
+    .chat h3 {
+      margin: 0 0 2px;
+      font-size: 14.5px;
+      font-weight: 600;
+    }
+    
+    .chn {
+      font-size: 12.5px;
+      margin: 0 0 10px;
+      line-height: 1.4;
+    }
+    
+    #chl {
+      max-height: 180px;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 10px;
+      padding: 4px 0;
+    }
+    
+    #chl:empty {
+      display: none;
+    }
+    
+    #chl div {
+      padding: 8px 12px;
+      border-radius: var(--radius-md);
+      font-size: 13.5px;
+      line-height: 1.45;
+      max-width: 90%;
+      overflow-wrap: anywhere;
+      box-shadow: var(--shadow-xs);
+    }
+    
+    #chl .u {
+      align-self: flex-end;
+      background: var(--ink);
+      color: var(--onink);
+    }
+    
+    #chl .a {
+      background: var(--panel);
+      color: var(--fg);
+      border: 1px solid var(--line);
+    }
+    
+    #chl .e {
+      background: var(--erb);
+      color: var(--er);
+      border: 1px solid var(--er-border);
+    }
+    
+    #chl .w {
+      color: var(--mut);
+      font-style: italic;
+      background: var(--hover);
+      border: 1px dashed var(--line);
+    }
+    
+    .chat .chips {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+      background: none;
+      border: 0;
+      padding: 0;
+      box-shadow: none;
+    }
+    
+    .chat form {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+    }
+    
+    .chat textarea {
+      flex: 1;
+      min-height: 44px;
+      resize: vertical;
+      border-radius: var(--radius-md);
+    }
+    
+    @media (max-width: 600px) {
+      .chat form {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      #chl div {
+        max-width: 100%;
+      }
+    }
+
+    /* ==========================================================================
+       Menu, Filters Drawer, & Onboarding Grid
+       ========================================================================== */
+    .menu {
+      position: relative;
+    }
+    
+    .menu > summary {
+      list-style: none;
+      margin: 0;
+      display: inline-flex;
+      align-items: center;
+      color: var(--fg);
+    }
+    
+    .menu > summary::-webkit-details-marker {
+      display: none;
+    }
+    
+    .menu .pop {
+      position: absolute;
+      right: 0;
+      top: 38px;
+      z-index: 40;
+      background: var(--panel);
+      border: 1px solid var(--line2);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--float);
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 200px;
+    }
+    
+    .menu .pop .btn {
+      justify-content: flex-start;
+      border-color: transparent;
+      box-shadow: none;
+    }
+    
+    .menu .pop .btn:hover {
+      background: var(--hover);
+    }
+
+    .onb {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    
+    @media (max-width: 768px) {
+      .onb {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    .onb > div {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: var(--radius-lg);
+      padding: 14px 16px;
+      font-size: 13px;
+      color: var(--mut);
+      box-shadow: var(--shadow-xs);
+    }
+    
+    .onb b {
+      display: block;
+      color: var(--fg);
+      font-size: 14.5px;
+      margin-bottom: 3px;
+    }
+    
+    .onb .n {
+      font: 600 11px var(--mono);
+      letter-spacing: 0.08em;
+      color: var(--mut);
+    }
+    
+    .onb .now {
+      border-color: var(--ink);
+      box-shadow: var(--shadow-sm);
+      background: var(--hover-subtle);
+    }
+    
+    .onb .ok {
+      opacity: 0.65;
+    }
+    
+    .onb .ok .n::after {
+      content: " ✓ done";
+      color: var(--ok);
+      font-weight: 700;
+    }
+
+    .fpanel {
+      border: 1px solid var(--line);
+      border-bottom: 0;
+      background: var(--panel);
+      padding: 0 14px;
+    }
+    
+    .fpanel > summary {
+      margin: 0;
+      padding: 10px 0;
+      color: var(--fg);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+    }
+    
+    .fpanel > summary b {
+      font: 600 11px var(--mono);
+      background: var(--ink);
+      color: var(--onink);
+      border-radius: 10px;
+      padding: 1px 7px;
+      margin-left: 8px;
+    }
+    
+    .fpanel .bar2 {
+      border: 0;
+      padding-bottom: 12px;
+    }
+
+    .skel div {
+      height: 72px;
+      margin: 14px 18px;
+      border-radius: var(--radius-md);
+      background: linear-gradient(90deg, var(--hover), var(--line), var(--hover));
+      background-size: 200% 100%;
+      animation: sh 1.2s infinite linear;
+    }
+    
+    @keyframes sh {
+      to { background-position: -200% 0; }
+    }
+    
+    .empty .btn {
+      margin-top: 14px;
+    }
+
+    /* ==========================================================================
+       Modals & Dialogs
+       ========================================================================== */
+    dialog {
+      border: 1px solid var(--line2);
+      border-radius: var(--radius-xl);
+      background: var(--panel);
+      color: var(--fg);
+      padding: 0;
+      width: min(920px, 94vw);
+      box-shadow: var(--float);
+      overflow: hidden;
+    }
+    
+    dialog::backdrop {
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+    
+    .dh {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--line);
+      flex-wrap: wrap;
+      background: var(--hover-subtle);
+    }
+    
+    .dh b {
+      flex: 1;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    
+    .dh select {
+      width: auto;
+    }
+    
+    .db {
+      padding: 22px;
+      max-height: 74vh;
+      overflow: auto;
+    }
+    
+    iframe {
+      width: 100%;
+      height: 68vh;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: #ffffff;
+      box-shadow: var(--shadow-sm);
+    }
+    
+    .iss {
+      padding: 12px 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 13px;
+    }
+    
+    .iss:last-child {
+      border: 0;
+    }
+    
+    .iss b {
+      font: 600 12px var(--mono);
+      color: var(--er);
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--erb);
+    }
+
+    /* Toast Notifications */
+    #toasts {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 99;
+    }
+    
+    .toast {
+      background: var(--ink);
+      color: var(--onink);
+      padding: 12px 16px;
+      border-radius: var(--radius-md);
+      font-size: 13.5px;
+      max-width: 400px;
+      box-shadow: var(--float);
+      animation: in 0.2s ease-out;
+      line-height: 1.4;
+    }
+    
+    .toast.bad {
+      background: var(--erb);
+      color: var(--er);
+      border: 1px solid var(--er-border);
+      box-shadow: var(--shadow-lg);
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: var(--line2);
+      border-radius: 8px;
+      border: 2px solid var(--bg);
+    }
+
+    /* Touch Devices & Mobile Sizing */
+    @media (pointer: coarse), (max-width: 600px) {
+      .btn, .btn.sm, select.btn, input[type="text"], input[type="number"], select {
+        min-height: 44px;
+      }
+      .btn.icon, .btn.sm.icon {
+        min-width: 44px !important;
+      }
+      .tabs button {
+        min-height: 44px;
+      }
+      .chip button {
+        min-width: 44px;
+        min-height: 32px;
+      }
+      .boards span {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+      }
+      .fcheck, .mut:has(> input[type="checkbox"]), .check {
+        min-height: 44px;
+      }
+      .drop {
+        padding: 24px;
+      }
+      .top > div, .page {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+      .page {
+        gap: 16px;
+      }
+      .tools input {
+        width: 100%;
+      }
+      .tools {
+        margin-left: 0;
+        width: 100%;
+      }
+      .top select.btn {
+        max-width: 46vw;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Accessible Skip Link -->
+  <a class="skip" href="#main">Skip to jobs</a>
+
+  <!-- Header Navigation -->
+  <header class="top">
+    <div>
+      <div class="brand">
+        <h1 class="logo">Resumeit</h1>
+        <span class="badge" title="Local, AI-tailored and strictly truth-guarded">ATS Ready</span>
+      </div>
+
+      <nav class="tn" aria-label="Tools and settings">
+        <button type="button" class="ai" id="aiPill" onclick="aiHelp()" aria-haspopup="dialog" aria-label="AI status and setup help">
+          <i></i><span id="aiT">AI</span>
+        </button>
+
+        <select id="tpl" class="btn sm" aria-label="Resume template" title="Resume template used for PDFs">
+          <option value="classic">Template: Classic</option>
+          <option value="modern">Template: Modern</option>
+          <option value="compact">Template: Compact</option>
+          <option value="minimal">Template: Minimal</option>
+          <option value="executive">Template: Executive</option>
+          <option value="tech">Template: Tech</option>
+          <option value="elegant">Template: Elegant</option>
+        </select>
+
+        <select id="pg" class="btn sm" aria-label="Resume length" title="Resume length" onchange="post('/api/pages', { p: this.value }).catch(() => {})">
+          <option value="auto">Length: 1 page (2 if needed)</option>
+          <option value="one">Length: always 1 page</option>
+        </select>
+
+        <details class="menu" id="moreM">
+          <summary class="btn sm" aria-label="More actions" role="button">
+            More <svg viewBox="0 0 24 24" style="margin-left: 2px"><path d="M6 9l6 6 6-6"/></svg>
+          </summary>
+          <div class="pop">
+            <button class="btn sm" onclick="openFolder()" title="Every finished resume is saved here">
+              <svg viewBox="0 0 24 24"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+              Jobs folder
+            </button>
+            <a class="btn sm" href="/api/backup" title="Zip of your database and jobs folder">
+              <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Backup
+            </a>
+            <button class="btn sm" onclick="refit()" title="Re-fit already built resumes to one page. No AI calls.">
+              <svg viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+              Fix 2-page PDFs
+            </button>
+          </div>
+        </details>
+
+        <button class="btn sm" onclick="openIssues()">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Issues <b class="mono" id="ic">0</b>
+        </button>
+
+        <button class="btn sm icon" id="themeB" aria-label="Toggle theme"></button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main View Container -->
+  <div class="page">
+    <!-- Left Sidebar: Controls & Steps -->
+    <aside class="side" aria-label="Set up and search">
+      <!-- Step 1: Base Candidate Resume -->
+      <div class="sec" id="c1">
+        <h2 class="lbl"><span class="step-tag">Step 1</span> Your resume <span id="s1"></span></h2>
+        <p class="help">Start here. We read it once so jobs can be matched to it.</p>
+        
+        <div id="profView"></div>
+        
+        <div class="drop" id="drop" role="button" tabindex="0" aria-describedby="dropH" onclick="$('file').click()" onkeydown="if(event.key === 'Enter' || event.key === ' '){ event.preventDefault(); $('file').click(); }">
+          <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; stroke-width: 1.5; margin-bottom: 8px; color: var(--faint)"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242M12 12v9m-4-4 4-4 4 4"/></svg>
+          <b id="dropT">Drop your resume here</b>
+          <div class="mut" id="dropH">PDF, DOCX or TXT. Click, press Enter, or drop a file.</div>
+        </div>
+        
+        <input type="file" id="file" accept=".pdf,.docx,.txt,.md" hidden>
+        
+        <div class="row" style="margin-top: 10px">
+          <button class="btn sm ghost" onclick="$('tdlg').showModal()">
+            <svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+            Paste text
+          </button>
+          <button class="btn sm ghost danger" id="delRes" onclick="delResume()">
+            <svg viewBox="0 0 24 24"><path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+            Delete resume
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 2: Job Search Parameters -->
+      <div class="sec" id="c2">
+        <h2 class="lbl"><span class="step-tag">Step 2</span> Find jobs</h2>
+        <p class="help">Pick what to look for. Searching does not use the AI.</p>
+        <div class="note" id="lockNote" hidden>Read a resume first. Searching unlocks after that.</div>
+        
+        <div class="chips" id="chips">
+          <input id="chipIn" aria-label="Job titles. Press Enter to add" placeholder="Job titles. Empty = from my resume">
+        </div>
+        
+        <div style="margin-top: 8px">
+          <button class="btn sm" onclick="suggest()" id="sgb">
+            <svg viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+            Suggest from resume
+          </button>
+        </div>
+        
+        <div class="two">
+          <label class="field">
+            <span>City</span>
+            <input type="text" id="loc" placeholder="Any">
+          </label>
+          <label class="field">
+            <span>Country</span>
+            <select id="country">
+              <option value="in">India</option>
+              <option value="us">USA</option>
+              <option value="gb">UK</option>
+              <option value="ca">Canada</option>
+              <option value="ae">UAE</option>
+              <option value="sg">Singapore</option>
+              <option value="de">Germany</option>
+              <option value="au">Australia</option>
+            </select>
+          </label>
+        </div>
+        
+        <fieldset class="field" style="border: 0; padding: 0; margin: 12px 0 0; min-width: 0">
+          <legend class="sr">Job boards</legend>
+          <span>Job boards</span>
+          <div class="boards">
+            <label><input type="checkbox" class="site" value="linkedin" checked><span>LinkedIn</span></label>
+            <label><input type="checkbox" class="site" value="indeed" checked><span>Indeed</span></label>
+            <label><input type="checkbox" class="site" value="naukri" checked><span>Naukri</span></label>
+            <label><input type="checkbox" class="site" value="glassdoor"><span>Glassdoor</span></label>
+            <label><input type="checkbox" class="site" value="google"><span>Google</span></label>
+          </div>
+        </fieldset>
+        
+        <details>
+          <summary>More options</summary>
+          <div class="two">
+            <label class="field">
+              <span>Jobs per board</span>
+              <input type="number" id="n" value="15" min="1" max="100">
+            </label>
+            <label class="field">
+              <span>Posted within</span>
+              <select id="hrs">
+                <option value="24">24 hours</option>
+                <option value="72">3 days</option>
+                <option value="168" selected>7 days</option>
+                <option value="720">30 days</option>
+              </select>
+            </label>
+          </div>
+          <label class="check"><input type="checkbox" id="remote"><span>Remote only</span></label>
+        </details>
+        
+        <label class="check">
+          <input type="checkbox" id="auto">
+          <span>Build a resume for every matching job<small>Uses one AI call per job. Off: you choose which jobs to build.</small></span>
+        </label>
+        
+        <div style="margin-top: 16px">
+          <button class="btn p full" id="gob" onclick="go()">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Find jobs
+          </button>
+        </div>
+        
+        <div id="prog" hidden>
+          <div class="bar" role="progressbar" aria-label="Working"><i></i></div>
+        </div>
+        <div class="msg" id="st" aria-live="polite"></div>
+      </div>
+
+      <!-- Step 3: Manual Job Addition -->
+      <div class="sec" id="c3">
+        <h2 class="lbl"><span class="step-tag">Step 3</span> Or add one job yourself</h2>
+        <button class="btn full" onclick="$('mdlg').showModal()">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Paste a link or description
+        </button>
+      </div>
+
+      <!-- Management & Cleanup -->
+      <div class="sec">
+        <h2 class="lbl">Clean up</h2>
+        <div class="row">
+          <button class="btn sm" onclick="clearJobs('error')">Clear failed</button>
+          <button class="btn sm danger" onclick="clearJobs('')">Delete all jobs</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Feed: Jobs List & Management -->
+    <main id="main" tabindex="-1">
+      <!-- Error Alert Box -->
+      <div class="alert" id="alert" hidden>
+        <div>
+          <b>Your resume could not be read</b>
+          <span id="alertMsg"></span>
+        </div>
+        <button class="btn sm" onclick="$('file').click()">Upload another file</button>
+        <button class="btn sm" onclick="$('tdlg').showModal()">Paste text</button>
+        <button class="btn sm danger" onclick="delResume()">Delete it</button>
+      </div>
+      
+      <!-- Onboarding Guide Cards -->
+      <div class="onb" id="onb" hidden role="group" aria-label="Getting started in 3 steps">
+        <div id="o1">
+          <span class="n">STEP 1</span>
+          <b>Upload your resume</b>
+          PDF, DOCX or TXT.<br>
+          <button class="btn sm p" type="button" onclick="$('file').click()">Choose a file</button>
+        </div>
+        <div id="o2">
+          <span class="n">STEP 2</span>
+          <b>Find jobs</b>
+          Pick titles and boards, then press Find jobs.<br>
+          <button class="btn sm p" type="button" onclick="$('chipIn').focus()">Start searching</button>
+        </div>
+        <div id="o3">
+          <span class="n">STEP 3</span>
+          <b>Build, read, apply</b>
+          Build a tailored resume, read it, then apply on the job site yourself.
+        </div>
+      </div>
+      
+      <!-- Feed Header -->
+      <div class="head">
+        <h2>Jobs</h2>
+        <p id="sum" aria-live="polite"></p>
+      </div>
+      <p class="mut" id="dlHint" hidden style="margin: -6px 0 14px; font-size: 12.5px">PDF and DOCX on a row download straight away. Open Preview first to read the resume and confirm it is true before you send it.</p>
+      
+      <!-- Filter Tabs & Toolbar -->
+      <div class="bar2">
+        <div class="tabs" id="tabs" role="tablist" aria-label="Job views"></div>
+        <div class="tools">
+          <button class="btn sm" id="stopb" onclick="stopQueue()" hidden></button>
+          <button class="btn sm p" id="pendb" onclick="pending()" hidden></button>
+          <input type="text" id="q" placeholder="Search title or company" aria-label="Search title or company">
+          <select id="sort" class="btn sm" aria-label="Sort jobs">
+            <option value="new">Newest</option>
+            <option value="match">Best match</option>
+          </select>
+        </div>
+      </div>
+      
+      <!-- Detailed Filter Drawer -->
+      <details class="fpanel" id="fdet">
+        <summary>Filters <b id="fcnt" hidden></b></summary>
+        <div class="bar2" id="flt" style="flex-wrap: wrap; gap: 8px; font-size: 12px">
+          <input type="text" id="fsal" aria-label="Minimum salary in lakh per year" placeholder="Min salary (LPA)" style="width: 125px" oninput="draw()" title="Lakh INR per year. Other currencies converted roughly. Jobs with unknown salary are hidden while this is set.">
+          <label class="mut"><input type="checkbox" id="fhas" onchange="draw()"> salary shown</label>
+          <select id="fmode" class="btn sm" aria-label="Work mode" onchange="draw()"><option value="">Any work mode</option><option value="remote">Remote</option><option value="hybrid">Hybrid</option><option value="onsite">On-site</option></select>
+          <select id="ftype" class="btn sm" aria-label="Job type" onchange="draw()"><option value="">Any type</option><option value="full-time">Full-time</option><option value="contract">Contract</option><option value="internship">Internship</option><option value="part-time">Part-time</option></select>
+          <select id="fage" class="btn sm" aria-label="Posted date" onchange="draw()"><option value="0">Any date</option><option value="1">Last 24h</option><option value="3">Last 3 days</option><option value="7">Last week</option></select>
+          <label class="mut"><input type="checkbox" id="hsr" checked onchange="hideSr=this.checked;draw()"> only my level (hide 5+, 20+ yrs jobs)</label>
+          <label class="mut"><input type="checkbox" id="fres" checked onchange="draw()"> India, or remote if abroad</label>
+          <label class="mut"><input type="checkbox" id="fskill" checked onchange="draw()"> matches my resume skills</label>
+          <label class="mut"><input type="checkbox" id="fwarn" onchange="draw()"> hide warnings (night shift, bond, unpaid...)</label>
+        </div>
+      </details>
+      
+      <!-- Job Rows List -->
+      <div class="list" id="jlist" role="tabpanel" aria-label="Jobs">
+        <div class="skel" id="skel" aria-hidden="true"><div></div><div></div><div></div></div>
+        <div id="jobs"></div>
+        <div class="empty" id="emptyS" hidden></div>
+        <div class="more" id="moreJ" hidden><button class="btn" id="moreB" type="button"></button></div>
+      </div>
+    </main>
   </div>
 
-  <div class="sec" id="c2">
-    <h2 class="lbl">Step 2 · Find jobs</h2><p class="help">Pick what to look for. Searching does not use the AI.</p>
-    <div class="note" id="lockNote" hidden>Read a resume first. Searching unlocks after that.</div>
-    <div class="chips" id="chips"><input id="chipIn" aria-label="Job titles. Press Enter to add" placeholder="Job titles. Empty = from my resume"></div>
-    <div style="margin-top:6px"><button class="btn sm" onclick="suggest()" id="sgb">Suggest from resume</button></div>
-    <div class="two"><label class="field"><span>City</span><input type="text" id="loc" placeholder="Any"></label>
-      <label class="field"><span>Country</span><select id="country"><option value="in">India</option><option value="us">USA</option><option value="gb">UK</option><option value="ca">Canada</option><option value="ae">UAE</option><option value="sg">Singapore</option><option value="de">Germany</option><option value="au">Australia</option></select></label></div>
-    <fieldset class="field" style="border:0;padding:0;margin:12px 0 0;min-width:0"><legend class="sr">Job boards</legend><span>Job boards</span><div class="boards">
-      <label><input type="checkbox" class="site" value="linkedin" checked><span>LinkedIn</span></label><label><input type="checkbox" class="site" value="indeed" checked><span>Indeed</span></label>
-      <label><input type="checkbox" class="site" value="naukri" checked><span>Naukri</span></label><label><input type="checkbox" class="site" value="glassdoor"><span>Glassdoor</span></label><label><input type="checkbox" class="site" value="google"><span>Google</span></label></div></fieldset>
-    <details><summary>More options</summary>
-      <div class="two"><label class="field"><span>Jobs per board</span><input type="number" id="n" value="15" min="1" max="100"></label>
-        <label class="field"><span>Posted within</span><select id="hrs"><option value="24">24 hours</option><option value="72">3 days</option><option value="168" selected>7 days</option><option value="720">30 days</option></select></label></div>
-      <label class="check"><input type="checkbox" id="remote"><span>Remote only</span></label></details>
-    <label class="check"><input type="checkbox" id="auto"><span>Build a resume for every matching job<small>Uses one AI call per job. Off: you choose which jobs to build.</small></span></label>
-    <div style="margin-top:14px"><button class="btn p full" id="gob" onclick="go()">Find jobs</button></div>
-    <div id="prog" hidden><div class="bar" role="progressbar" aria-label="Working"><i></i></div></div><div class="msg" id="st" aria-live="polite"></div>
-  </div>
+  <!-- Dialog 1: Resume Preview & Verification Modal -->
+  <dialog id="pdlg" aria-labelledby="pt">
+    <div class="dh">
+      <b id="pt"></b>
+      <select id="ptpl" class="btn sm" aria-label="Resume template">
+        <option value="classic">Classic</option>
+        <option value="modern">Modern</option>
+        <option value="compact">Compact</option>
+        <option value="minimal">Minimal</option>
+        <option value="executive">Executive</option>
+        <option value="tech">Tech</option>
+        <option value="elegant">Elegant</option>
+      </select>
+      <a class="btn sm p" id="ppdf" role="link" tabindex="0" aria-disabled="true">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        PDF
+      </a>
+      <a class="btn sm" id="pdoc" role="link" tabindex="0" aria-disabled="true">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        DOCX
+      </a>
+      <button class="btn sm icon" onclick="$('pdlg').close()" aria-label="Close dialog">
+        <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    
+    <div class="db">
+      <div class="mut" id="pmeta" style="margin-bottom: 12px; font-size: 13px"></div>
+      
+      <!-- Mandatory Truth Acknowledgment Card -->
+      <label class="check ack">
+        <input type="checkbox" id="pok" onchange="lockDl()">
+        <span>I have read this resume and checked it is true<small>PDF and DOCX stay locked until you tick this. Nothing is checked for you: you are the one who sends it.</small></span>
+      </label>
+      
+      <button class="btn sm" id="chg" onclick="showDiff()" style="margin-bottom: 10px">
+        <svg viewBox="0 0 24 24"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>
+        What changed
+      </button>
+      <div id="dfv" class="df" hidden></div>
+      
+      <!-- AI Chat Modification Section -->
+      <section class="chat" aria-labelledby="chT">
+        <h3 id="chT">Customize with chat</h3>
+        <p class="mut chn">Tell it what to change. You can add a skill or a number by typing it yourself. New employers, projects or degrees must go in Review / edit.</p>
+        
+        <div id="chl" role="log" aria-live="polite" aria-relevant="additions" tabindex="0" aria-label="Chat with your resume"></div>
+        
+        <div class="chips" id="chs" aria-label="Suggestions">
+          <button type="button" class="btn sm" data-m="Shorten the summary to two lines">Shorten summary</button>
+          <button type="button" class="btn sm" data-m="Put my skills section first">Skills first</button>
+          <button type="button" class="btn sm" data-m="Make the bullets more action-focused">Stronger bullets</button>
+          <button type="button" class="btn sm" data-m="Drop the oldest role">Drop oldest role</button>
+        </div>
+        
+        <form id="chf" onsubmit="return sendChat(event)">
+          <label for="chm" class="sr">What should change in this resume?</label>
+          <textarea id="chm" rows="2" maxlength="2000" placeholder="e.g. Add Tally to skills, or make the summary about logistics"></textarea>
+          <button class="btn p" id="chb" type="submit">Send</button>
+        </form>
+      </section>
+      
+      <!-- Preview Frame -->
+      <iframe id="pf" title="Resume preview"></iframe>
+    </div>
+  </dialog>
 
-  <div class="sec" id="c3">
-    <h2 class="lbl">Or add one job yourself</h2>
-    <button class="btn" onclick="$('mdlg').showModal()">Paste a link or description</button>
-  </div>
+  <!-- Dialog 2: Free Google Gemini Setup Helper -->
+  <dialog id="adlg" aria-labelledby="adlgT">
+    <div class="dh">
+      <b id="adlgT">Set up a free AI (Google Gemini)</b>
+      <button class="btn sm icon" onclick="$('adlg').close()" aria-label="Close">
+        <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="db">
+      <p class="mut" id="aiNow" style="margin-top: 0"></p>
+      <p>Resumeit needs an AI to read your resume and write tailored ones. Google Gemini has a free tier and needs no credit card.</p>
+      <ol class="how">
+        <li><b>Get a free key.</b> Open <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>, sign in with a Google account, press <i>Create API key</i> and copy the key.</li>
+        <li><b>Paste it in <code>.env</code>.</b> In the Resumeit folder open the file <code>.env</code> (run.bat or run.sh creates it from <code>.env.example</code>). Write the key after <code>GEMINI_API_KEY=</code> with no spaces or quotes, and save.</li>
+        <li><b>Restart Resumeit.</b> Close the window it runs in and start it again. This label at the top turns green and says Gemini.</li>
+      </ol>
+      <p class="mut">The free tier has daily limits, so build resumes for the jobs you really want. Claude Code, <code>ANTHROPIC_API_KEY</code> and <code>OPENAI_API_KEY</code> also work if you already have them.</p>
+    </div>
+  </dialog>
 
-  <div class="sec">
-    <h2 class="lbl">Clean up</h2>
-    <div class="row"><button class="btn sm" onclick="clearJobs('error')">Clear failed</button><button class="btn sm danger" onclick="clearJobs('')">Delete all jobs</button></div>
-  </div>
-</aside>
+  <!-- Dialog 3: Issues Log Dialog -->
+  <dialog id="idlg" aria-labelledby="idlgT">
+    <div class="dh">
+      <b id="idlgT">Skipped, failed or incomplete</b>
+      <button class="btn sm" onclick="clearI()">Clear all</button>
+      <button class="btn sm icon" onclick="$('idlg').close()" aria-label="Close">
+        <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="db">
+      <div class="mut" style="margin-bottom: 12px">Everything that could not be done is listed here and saved to data/issues.log</div>
+      <div id="issues"></div>
+    </div>
+  </dialog>
 
-<main id="main" tabindex="-1">
-  <div class="alert" id="alert" hidden><div><b>Your resume could not be read</b><span id="alertMsg"></span></div>
-    <button class="btn" onclick="$('file').click()">Upload another file</button><button class="btn" onclick="$('tdlg').showModal()">Paste text</button><button class="btn danger" onclick="delResume()">Delete it</button></div>
-  <div class="onb" id="onb" hidden role="group" aria-label="Getting started in 3 steps">
-    <div id="o1"><span class="n">STEP 1</span><b>Upload your resume</b>PDF, DOCX or TXT.<br><button class="btn sm p" type="button" onclick="$('file').click()">Choose a file</button></div>
-    <div id="o2"><span class="n">STEP 2</span><b>Find jobs</b>Pick titles and boards, then press Find jobs.<br><button class="btn sm p" type="button" onclick="$('chipIn').focus()">Start searching</button></div>
-    <div id="o3"><span class="n">STEP 3</span><b>Build, read, apply</b>Build a tailored resume, read it, then apply on the job site yourself.</div></div>
-  <div class="head"><h2>Jobs</h2><p id="sum" aria-live="polite"></p></div>
-  <p class="mut" id="dlHint" hidden style="margin:-6px 0 12px;font-size:12.5px">PDF and DOCX on a row download straight away. Open Preview first to read the resume and confirm it is true before you send it.</p>
-  <div class="bar2">
-    <div class="tabs" id="tabs" role="tablist" aria-label="Job views"></div>
-    <div class="tools"><button class="btn sm" id="stopb" onclick="stopQueue()" hidden></button><button class="btn sm p" id="pendb" onclick="pending()" hidden></button>
-      <input type="text" id="q" placeholder="Search title or company" aria-label="Search title or company"><select id="sort" class="btn sm" aria-label="Sort jobs"><option value="new">Newest</option><option value="match">Best match</option></select></div>
-  </div>
-  <details class="fpanel" id="fdet"><summary>Filters <b id="fcnt" hidden></b></summary>
-  <div class="bar2" id="flt" style="flex-wrap:wrap;gap:8px;font-size:12px">
-    <input type="text" id="fsal" aria-label="Minimum salary in lakh per year" placeholder="Min salary (LPA)" style="width:120px" oninput="draw()" title="Lakh INR per year. Other currencies converted roughly. Jobs with unknown salary are hidden while this is set.">
-    <label class="mut"><input type="checkbox" id="fhas" onchange="draw()"> salary shown</label>
-    <select id="fmode" class="btn sm" aria-label="Work mode" onchange="draw()"><option value="">Any work mode</option><option value="remote">Remote</option><option value="hybrid">Hybrid</option><option value="onsite">On-site</option></select>
-    <select id="ftype" class="btn sm" aria-label="Job type" onchange="draw()"><option value="">Any type</option><option value="full-time">Full-time</option><option value="contract">Contract</option><option value="internship">Internship</option><option value="part-time">Part-time</option></select>
-    <select id="fage" class="btn sm" aria-label="Posted date" onchange="draw()"><option value="0">Any date</option><option value="1">Last 24h</option><option value="3">Last 3 days</option><option value="7">Last week</option></select>
-    <label class="mut"><input type="checkbox" id="hsr" checked onchange="hideSr=this.checked;draw()"> only my level (hide 5+, 20+ yrs jobs)</label>
-    <label class="mut"><input type="checkbox" id="fres" checked onchange="draw()"> India, or remote if abroad</label>
-    <label class="mut"><input type="checkbox" id="fskill" checked onchange="draw()"> matches my resume skills</label>
-    <label class="mut"><input type="checkbox" id="fwarn" onchange="draw()"> hide warnings (night shift, bond, unpaid...)</label>
-  </div></details>
-  <div class="list" id="jlist" role="tabpanel" aria-label="Jobs"><div class="skel" id="skel" aria-hidden="true"><div></div><div></div><div></div></div><div id="jobs"></div><div class="empty" id="emptyS" hidden></div><div class="more" id="moreJ" hidden><button class="btn" id="moreB" type="button"></button></div></div>
-</main>
-</div>
+  <!-- Dialog 4: Edit Parsed Resume (JSON) -->
+  <dialog id="edlg" aria-labelledby="edlgT">
+    <div class="dh">
+      <b id="edlgT">Edit parsed resume (JSON)</b>
+      <button class="btn sm p" onclick="saveP()">Save</button>
+      <button class="btn sm icon" onclick="$('edlg').close()" aria-label="Close">
+        <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="db">
+      <textarea id="pjson" aria-label="Parsed resume as JSON" style="min-height: 55vh; font: 13px var(--mono)"></textarea>
+    </div>
+  </dialog>
 
-<dialog id="pdlg" aria-labelledby="pt"><div class="dh"><b id="pt"></b><select id="ptpl" class="btn sm" aria-label="Resume template"><option value="classic">Classic</option><option value="modern">Modern</option><option value="compact">Compact</option><option value="minimal">Minimal</option><option value="executive">Executive</option><option value="tech">Tech</option><option value="elegant">Elegant</option></select><a class="btn sm p" id="ppdf" role="link" tabindex="0" aria-disabled="true">PDF</a><a class="btn sm" id="pdoc" role="link" tabindex="0" aria-disabled="true">DOCX</a><button class="btn sm" onclick="$('pdlg').close()">Close</button></div><div class="db"><div class="mut" id="pmeta" style="margin-bottom:10px;font-size:13px"></div>
-  <label class="check ack"><input type="checkbox" id="pok" onchange="lockDl()"><span>I have read this resume and checked it is true<small>PDF and DOCX stay locked until you tick this. Nothing is checked for you: you are the one who sends it.</small></span></label>
-  <button class="btn sm" id="chg" onclick="showDiff()" style="margin-bottom:8px">What changed</button><div id="dfv" class="df" hidden></div>
-  <section class="chat" aria-labelledby="chT"><h3 id="chT">Customize with chat</h3>
-    <p class="mut chn">Tell it what to change. You can add a skill or a number by typing it yourself. New employers, projects or degrees must go in Review / edit.</p>
-    <div id="chl" role="log" aria-live="polite" aria-relevant="additions" tabindex="0" aria-label="Chat with your resume"></div>
-    <div class="chips" id="chs" aria-label="Suggestions"><button type="button" class="btn sm" data-m="Shorten the summary to two lines">Shorten summary</button><button type="button" class="btn sm" data-m="Put my skills section first">Skills first</button><button type="button" class="btn sm" data-m="Make the bullets more action-focused">Stronger bullets</button><button type="button" class="btn sm" data-m="Drop the oldest role">Drop oldest role</button></div>
-    <form id="chf" onsubmit="return sendChat(event)"><label for="chm" class="sr">What should change in this resume?</label>
-      <textarea id="chm" rows="2" maxlength="2000" placeholder="e.g. Add Tally to skills, or make the summary about logistics"></textarea>
-      <button class="btn p" id="chb" type="submit">Send</button></form></section>
-  <iframe id="pf" title="Resume preview"></iframe></div></dialog>
-<dialog id="adlg" aria-labelledby="adlgT"><div class="dh"><b id="adlgT">Set up a free AI (Google Gemini)</b><button class="btn sm" onclick="$('adlg').close()">Close</button></div><div class="db"><p class="mut" id="aiNow" style="margin-top:0"></p>
-  <p>Resumeit needs an AI to read your resume and write tailored ones. Google Gemini has a free tier and needs no credit card.</p>
-  <ol class="how"><li><b>Get a free key.</b> Open <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>, sign in with a Google account, press <i>Create API key</i> and copy the key.</li>
-    <li><b>Paste it in <code>.env</code>.</b> In the Resumeit folder open the file <code>.env</code> (run.bat or run.sh creates it from <code>.env.example</code>). Write the key after <code>GEMINI_API_KEY=</code> with no spaces or quotes, and save.</li>
-    <li><b>Restart Resumeit.</b> Close the window it runs in and start it again. This label at the top turns green and says Gemini.</li></ol>
-  <p class="mut">The free tier has daily limits, so build resumes for the jobs you really want. Claude Code, <code>ANTHROPIC_API_KEY</code> and <code>OPENAI_API_KEY</code> also work if you already have them.</p></div></dialog>
-<dialog id="idlg" aria-labelledby="idlgT"><div class="dh"><b id="idlgT">Skipped, failed or incomplete</b><button class="btn sm" onclick="clearI()">Clear all</button><button class="btn sm" onclick="$('idlg').close()">Close</button></div><div class="db"><div class="mut">Everything that could not be done is listed here and saved to data/issues.log</div><div id="issues"></div></div></dialog>
-<dialog id="edlg" aria-labelledby="edlgT"><div class="dh"><b id="edlgT">Edit parsed resume (JSON)</b><button class="btn sm p" onclick="saveP()">Save</button><button class="btn sm" onclick="$('edlg').close()">Close</button></div><div class="db"><textarea id="pjson" aria-label="Parsed resume as JSON" style="min-height:55vh;font:13px var(--mono)"></textarea></div></dialog>
-<dialog id="tdlg" aria-labelledby="tdlgT"><div class="dh"><b id="tdlgT">Paste your resume text</b><button class="btn sm" onclick="$('tdlg').close()">Close</button></div><div class="db"><div class="mut">Select all in your resume, copy, paste here. Use this when a PDF has no readable text.</div>
-  <textarea id="ptext" aria-label="Resume text" style="min-height:300px;margin-top:10px"></textarea><div style="margin-top:12px"><button class="btn p" onclick="pasteResume()">Read this resume</button></div></div></dialog>
-<dialog id="mdlg" aria-labelledby="mdlgT"><div class="dh"><b id="mdlgT">Add a job</b><button class="btn sm" onclick="$('mdlg').close()">Close</button></div><div class="db">
-  <div class="two"><label class="field" style="margin:0"><span>Title</span><input type="text" id="mt"></label><label class="field" style="margin:0"><span>Company</span><input type="text" id="mc"></label></div>
-  <label class="field"><span>Job link (leave the description empty to read the page)</span><input type="text" id="mu"></label>
-  <label class="field"><span>Description</span><textarea id="md" style="min-height:220px"></textarea></label>
-  <div style="margin-top:12px"><button class="btn p" onclick="manual()">Build resume</button></div></div></dialog>
-<div id="toasts" role="status" aria-live="polite"></div>
+  <!-- Dialog 5: Paste Raw Resume Text -->
+  <dialog id="tdlg" aria-labelledby="tdlgT">
+    <div class="dh">
+      <b id="tdlgT">Paste your resume text</b>
+      <button class="btn sm icon" onclick="$('tdlg').close()" aria-label="Close">
+        <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="db">
+      <div class="mut">Select all in your resume, copy, paste here. Use this when a PDF has no readable text.</div>
+      <textarea id="ptext" aria-label="Resume text" style="min-height: 300px; margin-top: 10px"></textarea>
+      <div style="margin-top: 14px">
+        <button class="btn p" onclick="pasteResume()">Read this resume</button>
+      </div>
+    </div>
+  </dialog>
 
-<script>
-const $=id=>document.getElementById(id);
-const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-async function api(u,o){const r=await fetch(u,o);if(!r.ok){let e=await r.text();try{e=JSON.parse(e).detail||e}catch{}throw new Error(e)}return r.json()}
-const post=(u,b)=>api(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});
-function toast(m,bad){const t=document.createElement('div');t.className='toast'+(bad?' bad':'');t.setAttribute('role',bad?'alert':'status');t.textContent=m;$('toasts').append(t);setTimeout(()=>t.remove(),bad?8000:3200);
-  if(bad&&/No AI configured/i.test(m)&&!$('adlg').open)aiHelp()}  // the fix is one dialog away, so show it
-function aiHelp(){$('aiNow').textContent=window._aiBad?'Right now: no AI is set up.':'Right now: using '+$('aiT').textContent+'.';$('adlg').showModal()}
-const IC={x:'<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',tr:'<svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12h10l1-12M9 7V4h6v3"/></svg>'};
-document.addEventListener('click',e=>{const m=$('moreM');if(m.open&&(!m.contains(e.target)||e.target.closest('.pop .btn')))m.open=false});  // also closes after you pick an item
-document.addEventListener('keydown',e=>{const m=$('moreM');if(e.key==='Escape'&&m.open){m.open=false;m.querySelector('summary').focus()}});
-/* theme */
-const TI={auto:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>',light:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',dark:'<svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 019.5 4 8 8 0 1020 14.5z"/></svg>'};
-let TH='auto';try{TH=localStorage.getItem('theme')||'auto'}catch{}
-const dm=matchMedia('(prefers-color-scheme:dark)');
-function applyTheme(){document.documentElement.dataset.theme=TH==='auto'?(dm.matches?'dark':'light'):TH;$('themeB').innerHTML=TI[TH];$('themeB').title='Theme: '+TH+' (click to change)';$('themeB').setAttribute('aria-label','Theme: '+TH+'. Click to change')}
-$('themeB').onclick=()=>{TH={auto:'light',light:'dark',dark:'auto'}[TH];try{localStorage.setItem('theme',TH)}catch{};applyTheme()};
-dm.onchange=()=>{if(TH==='auto')applyTheme()};applyTheme();
+  <!-- Dialog 6: Manually Add Job Description -->
+  <dialog id="mdlg" aria-labelledby="mdlgT">
+    <div class="dh">
+      <b id="mdlgT">Add a job</b>
+      <button class="btn sm icon" onclick="$('mdlg').close()" aria-label="Close">
+        <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="db">
+      <div class="two">
+        <label class="field" style="margin: 0"><span>Title</span><input type="text" id="mt"></label>
+        <label class="field" style="margin: 0"><span>Company</span><input type="text" id="mc"></label>
+      </div>
+      <label class="field">
+        <span>Job link (leave the description empty to read the page)</span>
+        <input type="text" id="mu">
+      </label>
+      <label class="field">
+        <span>Description</span>
+        <textarea id="md" style="min-height: 220px"></textarea>
+      </label>
+      <div style="margin-top: 14px">
+        <button class="btn p" onclick="manual()">Build resume</button>
+      </div>
+    </div>
+  </dialog>
 
-const watch=new Set(),cache=new Map();let prevDone=null,runActive=false,shownRun=false,terms=[],filter='all',jobs=[],profOk=false,TPL='classic',busyNow=false;
-const getT=()=>TPL;
-const setT=v=>{TPL=v;post('/api/template',{t:v}).catch(()=>{})};
-$('tpl').onchange=()=>{setT($('tpl').value);cache.clear();$('jobs').innerHTML='';draw()};
+  <!-- Live Toast Container -->
+  <div id="toasts" role="status" aria-live="polite"></div>
 
-/* ---- resume ---- */
-async function loadP(){const d=await api('/api/profile');const p=d.profile;profOk=!d.problem;TPL=d.template;$('tpl').value=TPL;$('pg').value=d.pages||'auto';
-  const bad=d.ai.startsWith('NOT');window._aiBad=bad;$('aiPill').classList.toggle('bad',bad);$('aiT').textContent=bad?'AI not configured':({claude_cli:'Claude Code',anthropic:'Claude API',openai:'OpenAI',gemini:'Gemini'}[d.ai]||d.ai);$('aiPill').title=bad?'Click to see how to set up a free AI':'AI in use: '+d.ai+'. Click for setup help';
-  $('s1').textContent=profOk?'ready':'';['c2','c3'].forEach(i=>{$(i).classList.toggle('lock',!profOk);$(i).inert=!profOk});$('drop').classList.toggle('need',!profOk);$('lockNote').hidden=profOk;$('delRes').hidden=!p;
-  $('alert').hidden=!(p&&d.problem);$('alertMsg').textContent=' Nothing usable was found ('+(d.problem||'')+'). Jobs cannot be tailored until this is fixed.';
-  $('profView').innerHTML=profOk?`<div class="who"><b>${esc(p.name)}</b><span>${esc([p.email,p.location].filter(Boolean).join(' · '))}</span></div>
-   <div class="tags">${(p.skills||[]).slice(0,10).map(s=>`<span class="t">${esc(s)}</span>`).join('')}${(p.skills||[]).length>10?`<span class="t">+${p.skills.length-10}</span>`:''}</div>
-   <button class="btn sm" onclick="editP()" style="margin-bottom:10px">Review / edit</button>`:'';
-  $('dropT').textContent=profOk?'Replace with another file':'Drop your resume here';window._p=p}
-async function upload(f){if(!f)return;$('dropT').textContent='Reading your resume...';
-  const fd=new FormData();fd.append('f',f);try{await api('/api/profile/upload',{method:'POST',body:fd});toast('Resume read. Check it, then find jobs.')}catch(e){toast(e.message,1)}$('file').value='';loadP()}
-$('file').onchange=e=>upload(e.target.files[0]);
-['dragover','dragenter'].forEach(ev=>$('drop').addEventListener(ev,e=>{e.preventDefault();$('drop').classList.add('on')}));
-['dragleave','drop'].forEach(ev=>$('drop').addEventListener(ev,e=>{e.preventDefault();$('drop').classList.remove('on')}));
-$('drop').addEventListener('drop',e=>upload(e.dataTransfer.files[0]));
-async function pasteResume(){const t=$('ptext').value;if(t.trim().length<80)return toast('Paste your full resume text',1);
-  $('tdlg').close();toast('Reading your resume...');try{await post('/api/profile/text',{text:t});$('ptext').value='';toast('Resume read.')}catch(e){toast(e.message,1)}loadP()}
-async function delResume(){if(!confirm('Delete your saved resume? Jobs and resumes already built are kept. You can upload a new one afterwards.'))return;
-  try{await api('/api/profile',{method:'DELETE'});toast('Resume deleted. Upload a new one.')}catch(e){toast(e.message,1)}loadP();tick()}
-function editP(){$('pjson').value=JSON.stringify(window._p,null,2);$('edlg').showModal()}
-async function saveP(){try{await api('/api/profile',{method:'PUT',headers:{'Content-Type':'application/json'},body:$('pjson').value});$('edlg').close();toast('Saved');loadP()}catch(e){toast('Invalid JSON: '+e.message,1)}}
+  <!-- ==========================================================================
+       Application JavaScript Logic
+       ========================================================================== -->
+  <script>
+    // DOM helper & HTML escaper
+    const $ = (id) => document.getElementById(id);
+    const esc = (text) => String(text ?? '').replace(/[&<>"]/g, (char) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;'
+    }[char]));
 
-/* ---- search ---- */
-function drawChips(){document.querySelectorAll('#chips .chip').forEach(c=>c.remove());
-  terms.forEach((t,i)=>{const c=document.createElement('span');c.className='chip';c.innerHTML=`${esc(t)}<button type="button" aria-label="Remove ${esc(t)}" title="Remove">${IC.x}</button>`;c.querySelector('button').onclick=()=>{terms.splice(i,1);drawChips()};$('chips').insertBefore(c,$('chipIn'))})}
-function addTerm(v){v=v.trim();if(v&&!terms.includes(v)){terms.push(v);drawChips()}}
-$('chipIn').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===','){e.preventDefault();addTerm($('chipIn').value);$('chipIn').value=''}
-  else if(e.key==='Backspace'&&!$('chipIn').value){terms.pop();drawChips()}});
-$('chipIn').addEventListener('blur',()=>{addTerm($('chipIn').value);$('chipIn').value=''});
-$('auto').onchange=()=>{$('gob').textContent=$('auto').checked?'Find jobs and build resumes':'Find jobs'};
-async function suggest(){$('sgb').disabled=true;$('sgb').textContent='Reading resume...';
-  try{(await api('/api/terms')).terms.forEach(addTerm);toast('Titles added. Edit or remove any.')}catch(e){toast(e.message,1)}
-  $('sgb').disabled=false;$('sgb').textContent='Suggest from resume'}
-async function go(){addTerm($('chipIn').value);$('chipIn').value='';
-  const sites=[...document.querySelectorAll('.site:checked')].map(x=>x.value);if(!sites.length)return toast('Pick at least one job board',1);
-  try{await post('/api/search',{terms,location:$('loc').value,country:$('country').value,results:+$('n').value,hours_old:+$('hrs').value,remote:$('remote').checked,sites,auto:$('auto').checked});
-    runActive=$('auto').checked;shownRun=false;toast($('auto').checked?'Started. The first finished resume opens as a preview.':'Searching. No AI is used until you press Build.')}catch(e){toast(e.message,1)}tick()}
-async function manual(){if(!$('md').value.trim()&&!$('mu').value.trim())return toast('Paste the job description or a job link',1);
-  try{const r=await post('/api/jobs',{title:$('mt').value,company:$('mc').value,url:$('mu').value,description:$('md').value});watch.add(r.id);['mt','mc','mu','md'].forEach(i=>$(i).value='');$('mdlg').close();toast('Building. Preview opens when ready.')}catch(e){toast(e.message,1)}tick()}
-async function pending(){const ids=jobs.filter(x=>(x.status==='new'||x.status==='error')&&fitOf(x).length).map(x=>x.id);
-  const n=(await post('/api/estimate',{ids}).catch(()=>({ai_calls:ids.length}))).ai_calls;
-  if(!confirm(`Build resumes for ${n} jobs that match your skills? This uses about ${n} AI calls and takes a while. You can stop the queue any time.`))return;
-  try{const r=await api('/api/jobs/tailor-pending',{method:'POST'});toast(`${r.queued} queued.`)}catch(e){toast(e.message,1)}tick()}
-async function stopQueue(){try{const r=await api('/api/queue/stop',{method:'POST'});toast(`${r.stopped} jobs taken out of the queue.`)}catch(e){toast(e.message,1)}tick()}
-async function clearJobs(st){if(!confirm(st?'Delete all failed jobs?':'Delete ALL jobs and their tailored resumes?'))return;
-  try{await api('/api/jobs'+(st?'?status=error':''),{method:'DELETE'});cache.clear();$('jobs').innerHTML='';toast('Deleted')}catch(e){toast(e.message,1)}tick()}
+    // API Utilities
+    async function api(url, options) {
+      const res = await fetch(url, options);
+      if (!res.ok) {
+        let errMessage = await res.text();
+        try {
+          errMessage = JSON.parse(errMessage).detail || errMessage;
+        } catch (e) {}
+        throw new Error(errMessage);
+      }
+      return res.json();
+    }
 
-/* ---- jobs list (rows are patched in place, so clicks are never lost to a refresh) ---- */
-const GROUPS={all:['All',()=>true],done:['Ready',j=>j.status==='done'],new:['Not built',j=>j.status==='new'],work:['In progress',j=>j.status==='queued'||j.status==='tailoring'],low:['Low match',j=>j.status==='skipped'],error:['Failed',j=>j.status==='error'],applied:['Applied',j=>!!j.track]};
-const LABEL={done:'Ready',tailoring:'Building',queued:'Queued',new:'Not built',error:'Failed',skipped:'Low match'};
-const sc=j=>{try{return JSON.parse(j.match||'{}')}catch{return{}}};
-const fitOf=j=>{try{return JSON.parse(j.fit||'[]')}catch{return[]}};
-const link=(id,f)=>`/api/jobs/${id}/resume.${f}?t=${TPL}`;
-const inTab=(j,k)=>(k==='applied'?!!j.track:k==='all'?!['Applied','Rejected'].includes(j.track):true)&&GROUPS[k][1](j);
-const shown=j=>(!hideSr||!j.senior)&&okFilters(j)&&`${j.title} ${j.company}`.toLowerCase().includes($('q').value.toLowerCase());
-let tabSig='';  // tab counts follow the filters and search, so a number on a tab is what the list will show
-function drawTabs(){const v=jobs.filter(shown),h=Object.entries(GROUPS).map(([k,[n]])=>`<button type="button" role="tab" id="tab-${k}" aria-controls="jlist" aria-selected="${k===filter}" tabindex="${k===filter?0:-1}" data-f="${k}" class="${k===filter?'on':''}">${n}<b>${v.filter(j=>inTab(j,k)).length}</b></button>`).join('');
-  if(h!==tabSig){tabSig=h;$('tabs').innerHTML=h}}
-$('tabs').onclick=e=>{const b=e.target.closest('button');if(b){filter=b.dataset.f;lim=PAGE;draw()}};
-$('tabs').onkeydown=e=>{const ks=Object.keys(GROUPS),i=ks.indexOf(filter),n={ArrowRight:i+1,ArrowLeft:i-1,Home:0,End:ks.length-1}[e.key];if(n==null)return;
-  e.preventDefault();filter=ks[(n+ks.length)%ks.length];lim=PAGE;draw();$('tab-'+filter).focus()};
-const PAGE=50;let lim=PAGE;  // long lists render 50 rows at a time; rows off screen are skipped by content-visibility
-$('moreB').onclick=()=>{lim+=PAGE;draw()};
-$('q').oninput=()=>{lim=PAGE;draw()};$('sort').onchange=draw;
-function rank(j){const m=sc(j);return m.score!=null?m.score:Math.min(99,fitOf(j).length*8)}
-function infoLine(j){const b=[];
-  if(j.salary)b.push(`<span class="y" title="Read from the posting (${j.salary_src==='board'?'job board field':'job text'}). Check it on the site.">${esc(j.salary)}</span>`);
-  else b.push('<span class="mut" title="No salary found in the posting">salary not listed</span>');
-  if(j.mode)b.push(`<span>${esc(j.mode)}</span>`);if(j.jtype)b.push(`<span>${esc(j.jtype)}</span>`);
-  if(j.age_days!=null)b.push(`<span>${j.age_days<=0?'today':j.age_days+'d ago'}</span>`);
-  (j.tags||[]).forEach(t=>b.push(`<span class="g" title="Warning read from the job text">${esc(t)}</span>`));
-  return `<div class="ch">${b.join('')}</div>`}
-function rowHtml(j){const m=sc(j),built=m.score!=null,fit=fitOf(j),cls=built?(m.score>=70?'hi':m.score>=45?'mid':'lo'):'';
-  const num=built?m.score+'%':(fit.length?fit.length:'-'),cap=built?'match':(fit.length?'skills':''),pct=built?m.score:Math.min(100,fit.length*12);
-  const chips=built?[...(m.matched||[]).slice(0,4).map(g=>`<span class="y" title="${esc(g)}">${esc(g)}</span>`),...(m.gaps||[]).slice(0,3).map(g=>`<span class="g" title="Not in your resume: ${esc(g)}">gap: ${esc(g)}</span>`)]
-    :fit.slice(0,5).map(g=>`<span title="Your skill, mentioned in this job">${esc(g)}</span>`);
-  let act='';
-  if(j.status==='done')act=`<button class="btn sm p" onclick="prev(${j.id},this.dataset.t)" data-t="${esc(j.title)}" aria-label="Preview ${esc(j.title)}">Preview</button><a class="btn sm" href="${link(j.id,'pdf')}" aria-label="PDF for ${esc(j.title)}" title="Downloads straight away. Open Preview first and read it.">PDF</a><a class="btn sm" href="${link(j.id,'docx')}" aria-label="DOCX for ${esc(j.title)}" title="Downloads straight away. Open Preview first and read it.">DOCX</a><button class="btn sm" onclick="openFolder(${j.id})">Folder</button><button class="btn sm ghost" onclick="cover(${j.id})" title="Optional. One AI call.">${j.has_cover?'Cover letter (redo)':'Cover letter'}</button><button class="btn sm ghost" onclick="redo(${j.id})">Rebuild</button>`;
-  else if(j.status==='tailoring')act='';
-  else if(j.status==='queued')act=`<button class="btn sm" onclick="redo(${j.id})" title="Skip the queue and build this one now">Build now</button>`;
-  else act=`<button class="btn sm ${j.status==='new'&&fit.length?'p':''}" onclick="redo(${j.id})">${j.status==='skipped'?'Build anyway':'Build'}</button>`;
-  return `<div class="job" data-id="${j.id}"><div class="fit ${cls}" role="img" aria-label="${built?'Match '+m.score+' percent':fit.length?fit.length+' of your skills mentioned':'No score yet'}">${num}${cap?`<small>${cap}</small>`:''}<span class="m"><i style="width:${pct}%"></i></span></div>
-   <div style="min-width:0"><div class="jt">${esc(j.title)}</div><div class="sub">${esc(j.company)}${j.location?' · '+esc(j.location):''}${j.posted?' · '+esc(j.posted):''} · ${esc(j.site)}${j.url.startsWith('http')?` · <a href="${esc(j.url)}" target="_blank" rel="noopener">open</a>`:''}</div>
-   ${infoLine(j)}${chips.length?`<div class="ch">${chips.join('')}</div>`:''}${j.error&&j.status!=='skipped'?`<div class="err">${esc(j.error)}</div>`:''}${j.flag?`<div class="err">${esc(j.flag)}</div>`:''}</div>
-   <div class="act">${(j.flags||[]).map(f=>`<span class="fl${j.senior&&/yrs/.test(f)?' bad':''}" title="Read from the job text. Only a hint.">${esc(f)}</span>`).join('')}<select class="btn sm trk" aria-label="Application status for ${esc(j.title)}" onchange="track(${j.id},this.value)" title="You set this by hand. The app never applies for you."><option value="">Not applied</option>${['Applied','Interview','Rejected','Offer'].map(t=>`<option${j.track===t?' selected':''}>${t}</option>`).join('')}</select><span class="tag ${j.status}">${LABEL[j.status]||j.status}</span>${act}<button class="btn sm ghost icon" onclick="del(${j.id})" title="Delete job" aria-label="Delete job: ${esc(j.title)}" style="width:28px">${IC.tr}</button></div></div>`}
-function draw(){const box=$('jobs');drawTabs();
-  let l=jobs.filter(j=>inTab(j,filter)&&shown(j));
-  if($('sort').value==='match')l.sort((a,b)=>rank(b)-rank(a));
-  const keep=new Set();let ref=box.firstElementChild;
-  for(const j of l.slice(0,lim)){keep.add(j.id);const h=rowHtml(j);let c=cache.get(j.id);
-    if(!c||c.sig!==h){const t=document.createElement('div');t.innerHTML=h;const el=t.firstElementChild;if(!c)el.classList.add('enter');
-      if(c&&c.el.parentNode){if(ref===c.el)ref=el;c.el.replaceWith(el)}c={sig:h,el};cache.set(j.id,c)}
-    if(c.el!==ref)box.insertBefore(c.el,ref);else ref=ref.nextElementSibling}
-  for(const [id,c] of cache)if(!keep.has(id)){c.el.remove();cache.delete(id)}
-  $('moreJ').hidden=l.length<=lim;$('moreB').textContent=`Show ${Math.min(PAGE,l.length-lim)} more (${l.length-lim} not shown)`;
-  const e=$('emptyS');e.hidden=l.length>0;
-  e.innerHTML=jobs.length?`<b>Nothing in this view</b>Try another tab, loosen the Filters, or clear the search box.<br><button class="btn" onclick="resetFilters()">Show all jobs (clear filters)</button>`
-    :profOk?`<b>No jobs yet</b>Press Find jobs on the left, or add one you already have.<br><button class="btn p" onclick="$('gob').click()">Find jobs</button> <button class="btn" onclick="$('mdlg').showModal()">Add a job</button>`
-    :`<b>Start with your resume</b>Upload it on the left. Nothing is sent anywhere except your chosen AI.<br><button class="btn p" onclick="$('file').click()">Upload resume</button> <button class="btn" onclick="$('tdlg').showModal()">Paste text</button>`;
-  const fc=[parseFloat($('fsal').value)>0,$('fhas').checked,$('fmode').value,$('ftype').value,+$('fage').value,$('hsr').checked,$('fres').checked,$('fskill').checked,$('fwarn').checked].filter(Boolean).length;
-  $('fcnt').textContent=fc;$('fcnt').hidden=!fc;
-  const cnt=k=>jobs.filter(GROUPS[k][1]).length,sc2=jobs.filter(x=>x.status==='done').map(x=>sc(x).score).filter(v=>v!=null);
-  $('sum').textContent=jobs.length?`${jobs.length} jobs${l.length<jobs.length?` (${l.length} shown)`:''} · ${cnt('done')} ready · ${cnt('new')} not built`+(sc2.length?` · avg match ${Math.round(sc2.reduce((a,b)=>a+b,0)/sc2.length)}%`:''):'';
-  $('dlHint').hidden=!jobs.some(x=>x.status==='done');
-  const o=$('onb');o.hidden=profOk&&jobs.length>0;$('o1').className=profOk?'ok':'now';$('o2').className=profOk?(jobs.length?'ok':'now'):'';$('o3').className=''}
-let hideSr=true,pid=0;
-function resetFilters(){lim=PAGE;['fhas','hsr','fres','fskill','fwarn'].forEach(i=>$(i).checked=false);hideSr=false;$('fsal').value='';$('fmode').value=$('ftype').value='';$('fage').value='0';$('q').value='';filter='all';draw()}
-function okFilters(j){const ms=parseFloat($('fsal').value);
-  if((ms>0||$('fhas').checked)&&j.salary_lakh==null)return false;
-  if(ms>0&&j.salary_lakh<ms)return false;
-  if($('fmode').value&&j.mode!==$('fmode').value)return false;
-  if($('ftype').value&&j.jtype!==$('ftype').value)return false;
-  const a=+$('fage').value;if(a&&(j.age_days==null||j.age_days>a))return false;
-  if($('fres').checked&&!j.location_ok)return false;
-  if($('fskill').checked&&!fitOf(j).length)return false;
-  if($('fwarn').checked&&(j.tags||[]).length)return false;
-  return true}
-function prev(id,t){pid=id;$('dfv').hidden=true;const j=jobs.find(x=>x.id===id)||{},m=sc(j);$('pmeta').textContent=(m.score!=null?`Match ${m.score}%`:'')+(m.gaps?.length?` · Not in your resume: ${m.gaps.slice(0,6).join(', ')}`:'')+' · Built only from facts in your resume. Read it before sending.';
-  $('pt').textContent=t;$('ptpl').value=TPL;$('pok').checked=false;$('chl').innerHTML='';setPrev();$('pdlg').showModal()}  // the safety box starts unticked on every open
-function setPrev(){$('pf').src=`/api/jobs/${pid}/resume.html?t=${$('ptpl').value}&_=${Date.now()}`;$('ppdf').dataset.h=`/api/jobs/${pid}/resume.pdf?t=${$('ptpl').value}`;$('pdoc').dataset.h=`/api/jobs/${pid}/resume.docx`;lockDl()}
-/* PDF/DOCX in the preview have no href until the box is ticked, so they cannot be opened by any route (click, middle click, "save link as") */
-function lockDl(){const ok=$('pok').checked;for(const a of [$('ppdf'),$('pdoc')]){a.setAttribute('aria-disabled',ok?'false':'true');a.title=ok?'Download':'Locked: tick "I have read this resume and checked it is true" first';
-  if(ok)a.href=a.dataset.h;else a.removeAttribute('href')}}
-const lockedHit=e=>{const a=e.target.closest('#pdlg a[aria-disabled=true]');if(a){e.preventDefault();toast('Read the resume, then tick the box to unlock PDF and DOCX.',1);$('pok').focus()}return !!a};
-document.addEventListener('click',e=>{if(!lockedHit(e)&&e.target.closest('a[href*="/resume.pdf"]'))toast('Preparing your PDF. This takes a few seconds.')});
-document.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' ')lockedHit(e)});
-$('ptpl').onchange=()=>{setT($('ptpl').value);$('tpl').value=$('ptpl').value;setPrev();cache.clear();$('jobs').innerHTML='';draw()};
-async function redo(id){try{await api(`/api/jobs/${id}/tailor`,{method:'POST'});watch.add(id);toast('Building. Preview opens when ready.')}catch(e){toast(e.message,1)}tick()}
-async function del(id){if(!confirm('Delete this job?'))return;try{await api('/api/jobs/'+id,{method:'DELETE'})}catch(e){toast(e.message,1)}tick()}
-async function openFolder(id){try{await api(id?`/api/jobs/${id}/folder`:'/api/folder',{method:'POST'})}catch(e){toast(e.message,1)}}
-async function track(id,v){try{await post(`/api/jobs/${id}/track`,{status:v});toast(v?'Marked '+v:'Cleared')}catch(e){toast(e.message,1)}tick()}
-async function refit(){if(!confirm('Re-fit already built resumes to one page? No AI calls; it only removes the least relevant lines and shrinks type to 9pt at most.'))return;
-  try{const r=await api('/api/jobs/refit',{method:'POST'});toast(r.queued+' resumes queued for re-fit. See Issues for any that need manual trim.')}catch(e){toast(e.message,1)}tick()}
-async function cover(id){toast('Writing cover letter...');try{await api(`/api/jobs/${id}/cover-letter`,{method:'POST'});toast('Saved as cover_letter.md in the job folder')}catch(e){toast(e.message,1)}tick()}
-/* chat editing: one AI call per message, the server runs the same truth guard and one-page fit */
-let chatBusy=false;
-function addMsg(c,t){const d=document.createElement('div');d.className=c;d.textContent=t;$('chl').append(d);$('chl').scrollTop=1e6;return d}
-async function sendChat(ev){ev.preventDefault();const m=$('chm').value.trim();if(!m||chatBusy)return false;
-  chatBusy=true;$('chm').value='';$('chb').disabled=true;$('chb').textContent='Working...';$('chm').setAttribute('aria-busy','true');
-  addMsg('u',m);const w=addMsg('w','Changing your resume. This takes up to a minute...');
-  try{const r=await post(`/api/jobs/${pid}/chat`,{message:m});w.remove();addMsg('a',r.reply+(r.flag?' (Note: '+r.flag+')':''));$('pok').checked=false;setPrev();tick()}
-  catch(e){w.remove();addMsg('e','Not changed: '+e.message)}
-  finally{chatBusy=false;$('chb').disabled=false;$('chb').textContent='Send';$('chm').removeAttribute('aria-busy');$('chm').focus()}
-  return false}
-$('chm').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();$('chf').requestSubmit()}});
-$('chs').addEventListener('click',e=>{const b=e.target.closest('button[data-m]');if(b){$('chm').value=b.dataset.m;$('chm').focus()}});
-async function showDiff(){const b=$('dfv');if(!b.hidden){b.hidden=true;return}
-  try{const d=await api(`/api/jobs/${pid}/diff`);let h='';
-    h+=`<p><b>Skills</b> removed: ${d.skills.removed.map(esc).map(x=>`<del>${x}</del>`).join(' ')||'none'}</p>`;
-    for(const k of ['experience','projects'])for(const e of d[k])h+=`<p><b>${esc(e.name)}</b>${e.dropped?' <del>dropped</del>':''}</p><ul>`+e.bullets.map(x=>`<li>${x.state==='same'?esc(x.text):x.state==='reworded'?`<ins>${esc(x.text)}</ins> <span class="mut">(was: ${esc(x.was)})</span>`:`<ins>NEW? ${esc(x.text)}</ins>`}</li>`).join('')+e.removed_bullets.map(x=>`<li><del>${esc(x)}</del></li>`).join('')+'</ul>';
-    b.innerHTML=h;b.hidden=false}catch(e){toast(e.message,1)}}
-async function openIssues(){await tick();$('idlg').showModal()}
-async function clearI(){try{await api('/api/issues',{method:'DELETE'})}catch(e){toast(e.message,1)}tick()}
+    const post = (url, body) => api(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
 
-async function tick(){try{const [s,j,is]=await Promise.all([api('/api/status'),api('/api/jobs'),api('/api/issues')]);jobs=j;
-  const nowDone=new Set(j.filter(x=>x.status==='done').map(x=>x.id));
-  if(prevDone){for(const id of nowDone){if(prevDone.has(id))continue;const x=j.find(y=>y.id===id);const mine=watch.has(id),first=runActive&&!shownRun;
-    if(mine||first){watch.delete(id);if(first)shownRun=true;if(document.querySelector('dialog[open]'))toast('Resume ready: '+x.title);else prev(id,x.title)}}
-    for(const id of [...watch]){const x=j.find(y=>y.id===id);if(!x)watch.delete(id);else if(x.status==='error'){watch.delete(id);toast('Could not build: '+x.error,1)}}}
-  prevDone=nowDone;
-  const busy=s.scraping||watch.size>0||j.some(x=>x.status==='tailoring'||x.status==='queued');busyNow=busy;if(!busy)runActive=false;
-  $('gob').disabled=s.scraping;$('gob').textContent=s.scraping?'Working...':($('auto').checked?'Find jobs and build resumes':'Find jobs');$('prog').hidden=!busy;
-  $('st').textContent=s.msg||'';$('ic').textContent=is.length;
-  const todo=j.filter(x=>(x.status==='new'||x.status==='error')&&fitOf(x).length).length,queued=j.filter(x=>x.status==='queued').length;
-  $('pendb').hidden=!(todo&&profOk&&!s.scraping);$('pendb').textContent=`Build ${todo} matching`;$('stopb').hidden=!queued;$('stopb').textContent=`Stop queue (${queued})`;
-  $('issues').innerHTML=is.map(i=>`<div class="iss"><b>${esc(i.kind)}</b> · ${esc(i.ref)}<div class="mut">${esc(i.msg)} · ${esc(i.ts)}</div></div>`).join('')||'<div class="empty">Nothing skipped or failed</div>';
-  draw()}catch{}finally{$('skel').hidden=true;clearTimeout(pollT);pollT=setTimeout(poll,busyNow?3000:20000)}}  // every tick re-arms the timer, so an action that starts work speeds polling up at once
-let pollT;const poll=()=>document.hidden?(pollT=setTimeout(poll,3000)):tick();
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick()});
-loadP().catch(()=>{}).finally(tick);  // resume state first: tick() needs it
-</script></body></html>
+    // Toast Notification Manager
+    function toast(message, isError) {
+      const el = document.createElement('div');
+      el.className = 'toast' + (isError ? ' bad' : '');
+      el.setAttribute('role', isError ? 'alert' : 'status');
+      el.textContent = message;
+      $('toasts').append(el);
+      
+      setTimeout(() => el.remove(), isError ? 8000 : 3200);
+      
+      if (isError && /No AI configured/i.test(message) && !$('adlg').open) {
+        aiHelp();
+      }
+    }
+
+    function aiHelp() {
+      $('aiNow').textContent = window._aiBad
+        ? 'Right now: no AI is set up.'
+        : 'Right now: using ' + $('aiT').textContent + '.';
+      $('adlg').showModal();
+    }
+
+    // Shared Icons
+    const IC = {
+      x: '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+      tr: '<svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12h10l1-12M9 7V4h6v3"/></svg>'
+    };
+
+    // Close Menu on Click Outside / Escape
+    document.addEventListener('click', (e) => {
+      const menu = $('moreM');
+      if (menu.open && (!menu.contains(e.target) || e.target.closest('.pop .btn'))) {
+        menu.open = false;
+      }
+    });
+    
+    document.addEventListener('keydown', (e) => {
+      const menu = $('moreM');
+      if (e.key === 'Escape' && menu.open) {
+        menu.open = false;
+        menu.querySelector('summary').focus();
+      }
+    });
+
+    // Theme Management
+    const THEME_ICONS = {
+      auto: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>',
+      light: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
+      dark: '<svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 019.5 4 8 8 0 1020 14.5z"/></svg>'
+    };
+    
+    let TH = 'auto';
+    try {
+      TH = localStorage.getItem('theme') || 'auto';
+    } catch (e) {}
+    
+    const darkMedia = window.matchMedia('(prefers-color-scheme: dark)');
+    
+    function applyTheme() {
+      const isDark = TH === 'auto' ? darkMedia.matches : TH === 'dark';
+      document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
+      $('themeB').innerHTML = THEME_ICONS[TH];
+      $('themeB').title = 'Theme: ' + TH + ' (click to change)';
+      $('themeB').setAttribute('aria-label', 'Theme: ' + TH + '. Click to change');
+    }
+    
+    $('themeB').onclick = () => {
+      TH = { auto: 'light', light: 'dark', dark: 'auto' }[TH];
+      try {
+        localStorage.setItem('theme', TH);
+      } catch (e) {}
+      applyTheme();
+    };
+    
+    darkMedia.onchange = () => {
+      if (TH === 'auto') applyTheme();
+    };
+    applyTheme();
+
+    // Application State
+    const watch = new Set();
+    const cache = new Map();
+    let prevDone = null;
+    let runActive = false;
+    let shownRun = false;
+    let terms = [];
+    let filter = 'all';
+    let jobs = [];
+    let profOk = false;
+    let TPL = 'classic';
+    let busyNow = false;
+
+    const getT = () => TPL;
+    const setT = (v) => {
+      TPL = v;
+      post('/api/template', { t: v }).catch(() => {});
+    };
+    
+    $('tpl').onchange = () => {
+      setT($('tpl').value);
+      cache.clear();
+      $('jobs').innerHTML = '';
+      draw();
+    };
+
+    /* ==========================================================================
+       Profile & Resume Handlers
+       ========================================================================== */
+    async function loadP() {
+      const data = await api('/api/profile');
+      const profile = data.profile;
+      profOk = !data.problem;
+      TPL = data.template;
+      $('tpl').value = TPL;
+      $('pg').value = data.pages || 'auto';
+      
+      const isBadAi = data.ai.startsWith('NOT');
+      window._aiBad = isBadAi;
+      $('aiPill').classList.toggle('bad', isBadAi);
+      $('aiT').textContent = isBadAi ? 'AI not configured' : ({
+        claude_cli: 'Claude Code',
+        anthropic: 'Claude API',
+        openai: 'OpenAI',
+        gemini: 'Gemini'
+      }[data.ai] || data.ai);
+      
+      $('aiPill').title = isBadAi
+        ? 'Click to see how to set up a free AI'
+        : 'AI in use: ' + data.ai + '. Click for setup help';
+        
+      $('s1').textContent = profOk ? 'ready' : '';
+      ['c2', 'c3'].forEach((id) => {
+        $(id).classList.toggle('lock', !profOk);
+        $(id).inert = !profOk;
+      });
+      
+      $('drop').classList.toggle('need', !profOk);
+      $('lockNote').hidden = profOk;
+      $('delRes').hidden = !profile;
+      
+      $('alert').hidden = !(profile && data.problem);
+      $('alertMsg').textContent = ' Nothing usable was found (' + (data.problem || '') + '). Jobs cannot be tailored until this is fixed.';
+      
+      $('profView').innerHTML = profOk ? `
+        <div class="who">
+          <b>${esc(profile.name)}</b>
+          <span>${esc([profile.email, profile.location].filter(Boolean).join(' · '))}</span>
+        </div>
+        <div class="tags">
+          ${(profile.skills || []).slice(0, 10).map((s) => `<span class="t">${esc(s)}</span>`).join('')}
+          ${(profile.skills || []).length > 10 ? `<span class="t">+${profile.skills.length - 10}</span>` : ''}
+        </div>
+        <button class="btn sm" onclick="editP()" style="margin-bottom: 10px">Review / edit</button>
+      ` : '';
+      
+      $('dropT').textContent = profOk ? 'Replace with another file' : 'Drop your resume here';
+      window._p = profile;
+    }
+
+    async function upload(file) {
+      if (!file) return;
+      $('dropT').textContent = 'Reading your resume...';
+      const formData = new FormData();
+      formData.append('f', file);
+      try {
+        await api('/api/profile/upload', { method: 'POST', body: formData });
+        toast('Resume read. Check it, then find jobs.');
+      } catch (err) {
+        toast(err.message, 1);
+      }
+      $('file').value = '';
+      loadP();
+    }
+
+    $('file').onchange = (e) => upload(e.target.files[0]);
+    ['dragover', 'dragenter'].forEach((ev) => $('drop').addEventListener(ev, (e) => {
+      e.preventDefault();
+      $('drop').classList.add('on');
+    }));
+    ['dragleave', 'drop'].forEach((ev) => $('drop').addEventListener(ev, (e) => {
+      e.preventDefault();
+      $('drop').classList.remove('on');
+    }));
+    $('drop').addEventListener('drop', (e) => upload(e.dataTransfer.files[0]));
+
+    async function pasteResume() {
+      const text = $('ptext').value;
+      if (text.trim().length < 80) {
+        return toast('Paste your full resume text', 1);
+      }
+      $('tdlg').close();
+      toast('Reading your resume...');
+      try {
+        await post('/api/profile/text', { text });
+        $('ptext').value = '';
+        toast('Resume read.');
+      } catch (err) {
+        toast(err.message, 1);
+      }
+      loadP();
+    }
+
+    async function delResume() {
+      if (!confirm('Delete your saved resume? Jobs and resumes already built are kept. You can upload a new one afterwards.')) return;
+      try {
+        await api('/api/profile', { method: 'DELETE' });
+        toast('Resume deleted. Upload a new one.');
+      } catch (err) {
+        toast(err.message, 1);
+      }
+      loadP();
+      tick();
+    }
+
+    function editP() {
+      $('pjson').value = JSON.stringify(window._p, null, 2);
+      $('edlg').showModal();
+    }
+
+    async function saveP() {
+      try {
+        await api('/api/profile', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: $('pjson').value
+        });
+        $('edlg').close();
+        toast('Saved');
+        loadP();
+      } catch (err) {
+        toast('Invalid JSON: ' + err.message, 1);
+      }
+    }
+
+    /* ==========================================================================
+       Search & Job Boards Management
+       ========================================================================== */
+    function drawChips() {
+      document.querySelectorAll('#chips .chip').forEach((c) => c.remove());
+      terms.forEach((term, index) => {
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.innerHTML = `${esc(term)}<button type="button" aria-label="Remove ${esc(term)}" title="Remove">${IC.x}</button>`;
+        chip.querySelector('button').onclick = () => {
+          terms.splice(index, 1);
+          drawChips();
+        };
+        $('chips').insertBefore(chip, $('chipIn'));
+      });
+    }
+
+    function addTerm(value) {
+      value = value.trim();
+      if (value && !terms.includes(value)) {
+        terms.push(value);
+        drawChips();
+      }
+    }
+
+    $('chipIn').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ',') {
+        e.preventDefault();
+        addTerm($('chipIn').value);
+        $('chipIn').value = '';
+      } else if (e.key === 'Backspace' && !$('chipIn').value) {
+        terms.pop();
+        drawChips();
+      }
+    });
+
+    $('chipIn').addEventListener('blur', () => {
+      addTerm($('chipIn').value);
+      $('chipIn').value = '';
+    });
+
+    $('auto').onchange = () => {
+      $('gob').textContent = $('auto').checked ? 'Find jobs and build resumes' : 'Find jobs';
+    };
+
+    async function suggest() {
+      $('sgb').disabled = true;
+      $('sgb').textContent = 'Reading resume...';
+      try {
+        const res = await api('/api/terms');
+        res.terms.forEach(addTerm);
+        toast('Titles added. Edit or remove any.');
+      } catch (err) {
+        toast(err.message, 1);
+      }
+      $('sgb').disabled = false;
+      $('sgb').textContent = 'Suggest from resume';
+    }
+
+    async function go() {
+      addTerm($('chipIn').value);
+      $('chipIn').value = '';
+      
+      const sites = [...document.querySelectorAll('.site:checked')].map((el) => el.value);
+      if (!sites.length) return toast('Pick at least one job board', 1);
+      
+      try {
+        await post('/api/search', {
+          terms,
+          location: $('loc').value,
+          country: $('country').value,
+          results: +$('n').value,
+          hours_old: +$('hrs').value,
+          remote: $('remote').checked,
+          sites,
+          auto: $('auto').checked
+        });
+        runActive = $('auto').checked;
+        shownRun = false;
+        toast($('auto').checked
+          ? 'Started. The first finished resume opens as a preview.'
+          : 'Searching. No AI is used until you press Build.');
+      } catch (err) {
+        toast(err.message, 1);
+      }
+      tick();
+    }
+
+    async function manual() {
+      if (!$('md').value.trim() && !$('mu').value.trim()) {
+        return toast('Paste the job description or a job link', 1);
+      }
+      try {
+        const res = await post('/api/jobs', {
+          title: $('mt').value,
+          company: $('mc').value,
+          url: $('mu').value,
+          description: $('md').value
+        });
+        watch.add(res.id);
+        ['mt', 'mc', 'mu', 'md'].forEach((id) => $(id).value = '');
+        $('mdlg').close();
+        toast('Building. Preview opens when ready.');
+      } catch (err) {
+        toast(err.message, 1);
+      }
+      tick();
+    }
+
+    async function pending() {
+      const ids = jobs.filter((x) => (x.status === 'new' || x.status === 'error') && fitOf(x).length).map((x) => x.id);
+      const est = await post('/api/estimate', { ids }).catch(() => ({ ai_calls: ids.length }));
+      const n = est.ai_calls;
+      
+      if (!confirm(`Build resumes for ${n} jobs that match your skills? This uses about ${n} AI calls and takes a while. You can stop the queue any time.`)) return;
+      
+      try {
+        const res = await api('/api/jobs/tailor-pending', { method: 'POST' });
+        toast(`${res.queued} queued.`);
+      } catch (err) {
+        toast(err.message, 1);
+      }
+      tick();
+    }
+
+    async function stopQueue() {
+      try {
+        const res = await api('/api/queue/stop', { method: 'POST' });
+        toast(`${res.stopped} jobs taken out of the queue.`);
+      } catch (err) {
+        toast(err.message, 1);
+      }
+      tick();
+    }
+
+    async function clearJobs(statusFilter) {
+      if (!confirm(statusFilter ? 'Delete all failed jobs?' : 'Delete ALL jobs and their tailored resumes?')) return;
+      try {
+        await api('/api/jobs' + (statusFilter ? '?status=error' : ''), { method: 'DELETE' });
+        cache.clear();
+        $('jobs').innerHTML = '';
+        toast('Deleted');
+      } catch (err) {
+        toast(err.message, 1);
+      }
+      tick();
+    }
+
+    /* ==========================================================================
+       Jobs List & Filter Rendering
+       ========================================================================== */
+    const GROUPS = {
+      all: ['All', () => true],
+      done: ['Ready', (j) => j.status === 'done'],
+      new: ['Not built', (j) => j.status === 'new'],
+      work: ['In progress', (j) => j.status === 'queued' || j.status === 'tailoring'],
+      low: ['Low match', (j) => j.status === 'skipped'],
+      error: ['Failed', (j) => j.status === 'error'],
+      applied: ['Applied', (j) => !!j.track]
+    };
+
+    const LABEL = {
+      done: 'Ready',
+      tailoring: 'Building',
+      queued: 'Queued',
+      new: 'Not built',
+      error: 'Failed',
+      skipped: 'Low match'
+    };
+
+    const sc = (j) => {
+      try {
+        return JSON.parse(j.match || '{}');
+      } catch (e) {
+        return {};
+      }
+    };
+
+    const fitOf = (j) => {
+      try {
+        return JSON.parse(j.fit || '[]');
+      } catch (e) {
+        return [];
+      }
+    };
+
+    const link = (id, format) => `/api/jobs/${id}/resume.${format}?t=${TPL}`;
+
+    const inTab = (j, key) => (
+      key === 'applied'
+        ? !!j.track
+        : key === 'all'
+          ? !['Applied', 'Rejected'].includes(j.track)
+          : true
+    ) && GROUPS[key][1](j);
+
+    const shown = (j) => (!hideSr || !j.senior) &&
+      okFilters(j) &&
+      `${j.title} ${j.company}`.toLowerCase().includes($('q').value.toLowerCase());
+
+    let tabSig = '';
+    function drawTabs() {
+      const visibleJobs = jobs.filter(shown);
+      const html = Object.entries(GROUPS).map(([key, [label]]) => `
+        <button type="button" role="tab" id="tab-${key}" aria-controls="jlist"
+                aria-selected="${key === filter}" tabindex="${key === filter ? 0 : -1}"
+                data-f="${key}" class="${key === filter ? 'on' : ''}">
+          ${label}<b>${visibleJobs.filter((j) => inTab(j, key)).length}</b>
+        </button>
+      `).join('');
+      
+      if (html !== tabSig) {
+        tabSig = html;
+        $('tabs').innerHTML = html;
+      }
+    }
+
+    $('tabs').onclick = (e) => {
+      const btn = e.target.closest('button');
+      if (btn) {
+        filter = btn.dataset.f;
+        lim = PAGE;
+        draw();
+      }
+    };
+
+    $('tabs').onkeydown = (e) => {
+      const keys = Object.keys(GROUPS);
+      const currIndex = keys.indexOf(filter);
+      const targetIndex = {
+        ArrowRight: currIndex + 1,
+        ArrowLeft: currIndex - 1,
+        Home: 0,
+        End: keys.length - 1
+      }[e.key];
+      
+      if (targetIndex == null) return;
+      e.preventDefault();
+      
+      filter = keys[(targetIndex + keys.length) % keys.length];
+      lim = PAGE;
+      draw();
+      $('tab-' + filter).focus();
+    };
+
+    const PAGE = 50;
+    let lim = PAGE;
+    $('moreB').onclick = () => {
+      lim += PAGE;
+      draw();
+    };
+
+    $('q').oninput = () => {
+      lim = PAGE;
+      draw();
+    };
+    $('sort').onchange = draw;
+
+    function rank(j) {
+      const m = sc(j);
+      return m.score != null ? m.score : Math.min(99, fitOf(j).length * 8);
+    }
+
+    function infoLine(j) {
+      const parts = [];
+      if (j.salary) {
+        parts.push(`<span class="y" title="Read from the posting (${j.salary_src === 'board' ? 'job board field' : 'job text'}). Check it on the site.">${esc(j.salary)}</span>`);
+      } else {
+        parts.push('<span class="mut" title="No salary found in the posting">salary not listed</span>');
+      }
+      if (j.mode) parts.push(`<span>${esc(j.mode)}</span>`);
+      if (j.jtype) parts.push(`<span>${esc(j.jtype)}</span>`);
+      if (j.age_days != null) parts.push(`<span>${j.age_days <= 0 ? 'today' : j.age_days + 'd ago'}</span>`);
+      (j.tags || []).forEach((tag) => parts.push(`<span class="g" title="Warning read from the job text">${esc(tag)}</span>`));
+      return `<div class="ch">${parts.join('')}</div>`;
+    }
+
+    function rowHtml(j) {
+      const matchData = sc(j);
+      const isBuilt = matchData.score != null;
+      const fitSkills = fitOf(j);
+      const matchClass = isBuilt
+        ? (matchData.score >= 70 ? 'hi' : matchData.score >= 45 ? 'mid' : 'lo')
+        : '';
+        
+      const scoreNumber = isBuilt ? matchData.score + '%' : (fitSkills.length ? fitSkills.length : '-');
+      const scoreCaption = isBuilt ? 'match' : (fitSkills.length ? 'skills' : '');
+      const progressPercent = isBuilt ? matchData.score : Math.min(100, fitSkills.length * 12);
+      
+      const skillsChips = isBuilt ? [
+        ...(matchData.matched || []).slice(0, 4).map((m) => `<span class="y" title="${esc(m)}">${esc(m)}</span>`),
+        ...(matchData.gaps || []).slice(0, 3).map((g) => `<span class="g" title="Not in your resume: ${esc(g)}">gap: ${esc(g)}</span>`)
+      ] : fitSkills.slice(0, 5).map((f) => `<span title="Your skill, mentioned in this job">${esc(f)}</span>`);
+      
+      let actionButtons = '';
+      if (j.status === 'done') {
+        actionButtons = `
+          <button class="btn sm p" onclick="prev(${j.id}, this.dataset.t)" data-t="${esc(j.title)}" aria-label="Preview ${esc(j.title)}">Preview</button>
+          <a class="btn sm" href="${link(j.id, 'pdf')}" aria-label="PDF for ${esc(j.title)}" title="Downloads straight away. Open Preview first and read it.">PDF</a>
+          <a class="btn sm" href="${link(j.id, 'docx')}" aria-label="DOCX for ${esc(j.title)}" title="Downloads straight away. Open Preview first and read it.">DOCX</a>
+          <button class="btn sm" onclick="openFolder(${j.id})">Folder</button>
+          <button class="btn sm ghost" onclick="cover(${j.id})" title="Optional. One AI call.">${j.has_cover ? 'Cover letter (redo)' : 'Cover letter'}</button>
+          <button class="btn sm ghost" onclick="redo(${j.id})">Rebuild</button>
+        `;
+      } else if (j.status === 'tailoring') {
+        actionButtons = '';
+      } else if (j.status === 'queued') {
+        actionButtons = `<button class="btn sm" onclick="redo(${j.id})" title="Skip the queue and build this one now">Build now</button>`;
+      } else {
+        actionButtons = `<button class="btn sm ${j.status === 'new' && fitSkills.length ? 'p' : ''}" onclick="redo(${j.id})">${j.status === 'skipped' ? 'Build anyway' : 'Build'}</button>`;
+      }
+      
+      return `
+        <div class="job" data-id="${j.id}">
+          <div class="fit ${matchClass}" role="img" aria-label="${isBuilt ? 'Match ' + matchData.score + ' percent' : fitSkills.length ? fitSkills.length + ' of your skills mentioned' : 'No score yet'}">
+            ${scoreNumber}${scoreCaption ? `<small>${scoreCaption}</small>` : ''}
+            <span class="m"><i style="width:${progressPercent}%"></i></span>
+          </div>
+          <div style="min-width: 0">
+            <div class="jt">${esc(j.title)}</div>
+            <div class="sub">${esc(j.company)}${j.location ? ' · ' + esc(j.location) : ''}${j.posted ? ' · ' + esc(j.posted) : ''} · ${esc(j.site)}${j.url.startsWith('http') ? ` · <a href="${esc(j.url)}" target="_blank" rel="noopener">open</a>` : ''}</div>
+            ${infoLine(j)}
+            ${skillsChips.length ? `<div class="ch">${skillsChips.join('')}</div>` : ''}
+            ${j.error && j.status !== 'skipped' ? `<div class="err">${esc(j.error)}</div>` : ''}
+            ${j.flag ? `<div class="err">${esc(j.flag)}</div>` : ''}
+          </div>
+          <div class="act">
+            ${(j.flags || []).map((f) => `<span class="fl${j.senior && /yrs/.test(f) ? ' bad' : ''}" title="Read from the job text. Only a hint.">${esc(f)}</span>`).join('')}
+            <select class="btn sm trk" aria-label="Application status for ${esc(j.title)}" onchange="track(${j.id}, this.value)" title="You set this by hand. The app never applies for you.">
+              <option value="">Not applied</option>
+              ${['Applied', 'Interview', 'Rejected', 'Offer'].map((t) => `<option${j.track === t ? ' selected' : ''}>${t}</option>`).join('')}
+            </select>
+            <span class="tag ${j.status}">${LABEL[j.status] || j.status}</span>
+            ${actionButtons}
+            <button class="btn sm ghost icon" onclick="del(${j.id})" title="Delete job" aria-label="Delete job: ${esc(j.title)}" style="width: 28px">${IC.tr}</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function draw() {
+      const box = $('jobs');
+      drawTabs();
+      
+      let list = jobs.filter((j) => inTab(j, filter) && shown(j));
+      if ($('sort').value === 'match') {
+        list.sort((a, b) => rank(b) - rank(a));
+      }
+      
+      const keep = new Set();
+      let refNode = box.firstElementChild;
+      
+      for (const job of list.slice(0, lim)) {
+        keep.add(job.id);
+        const html = rowHtml(job);
+        let cached = cache.get(job.id);
+        
+        if (!cached || cached.sig !== html) {
+          const wrapper = document.createElement('div');
+          wrapper.innerHTML = html;
+          const element = wrapper.firstElementChild;
+          if (!cached) element.classList.add('enter');
+          
+          if (cached && cached.el.parentNode) {
+            if (refNode === cached.el) refNode = element;
+            cached.el.replaceWith(element);
+          }
+          cached = { sig: html, el: element };
+          cache.set(job.id, cached);
+        }
+        
+        if (cached.el !== refNode) {
+          box.insertBefore(cached.el, refNode);
+        } else {
+          refNode = refNode.nextElementSibling;
+        }
+      }
+      
+      for (const [id, cached] of cache) {
+        if (!keep.has(id)) {
+          cached.el.remove();
+          cache.delete(id);
+        }
+      }
+      
+      $('moreJ').hidden = list.length <= lim;
+      $('moreB').textContent = `Show ${Math.min(PAGE, list.length - lim)} more (${list.length - lim} not shown)`;
+      
+      const emptyBox = $('emptyS');
+      emptyBox.hidden = list.length > 0;
+      emptyBox.innerHTML = jobs.length
+        ? `<b>Nothing in this view</b>Try another tab, loosen the Filters, or clear the search box.<br><button class="btn" onclick="resetFilters()">Show all jobs (clear filters)</button>`
+        : profOk
+          ? `<b>No jobs yet</b>Press Find jobs on the left, or add one you already have.<br><button class="btn p" onclick="$('gob').click()">Find jobs</button> <button class="btn" onclick="$('mdlg').showModal()">Add a job</button>`
+          : `<b>Start with your resume</b>Upload it on the left. Nothing is sent anywhere except your chosen AI.<br><button class="btn p" onclick="$('file').click()">Upload resume</button> <button class="btn" onclick="$('tdlg').showModal()">Paste text</button>`;
+          
+      const filterCount = [
+        parseFloat($('fsal').value) > 0,
+        $('fhas').checked,
+        $('fmode').value,
+        $('ftype').value,
+        +$('fage').value,
+        $('hsr').checked,
+        $('fres').checked,
+        $('fskill').checked,
+        $('fwarn').checked
+      ].filter(Boolean).length;
+      
+      $('fcnt').textContent = filterCount;
+      $('fcnt').hidden = !filterCount;
+      
+      const countGroup = (k) => jobs.filter(GROUPS[k][1]).length;
+      const readyScores = jobs.filter((x) => x.status === 'done').map((x) => sc(x).score).filter((v) => v != null);
+      
+      $('sum').textContent = jobs.length
+        ? `${jobs.length} jobs${list.length < jobs.length ? ` (${list.length} shown)` : ''} · ${countGroup('done')} ready · ${countGroup('new')} not built` +
+          (readyScores.length ? ` · avg match ${Math.round(readyScores.reduce((a, b) => a + b, 0) / readyScores.length)}%` : '')
+        : '';
+        
+      $('dlHint').hidden = !jobs.some((x) => x.status === 'done');
+      
+      const onboarding = $('onb');
+      onboarding.hidden = profOk && jobs.length > 0;
+      $('o1').className = profOk ? 'ok' : 'now';
+      $('o2').className = profOk ? (jobs.length ? 'ok' : 'now') : '';
+      $('o3').className = '';
+    }
+
+    let hideSr=true;
+    let pid = 0;
+
+    function resetFilters() {
+      lim = PAGE;
+      ['fhas', 'hsr', 'fres', 'fskill', 'fwarn'].forEach((id) => $(id).checked = false);
+      hideSr = false;
+      $('fsal').value = '';
+      $('fmode').value = $('ftype').value = '';
+      $('fage').value = '0';
+      $('q').value = '';
+      filter = 'all';
+      draw();
+    }
+
+    function okFilters(j) {
+      const minSalary = parseFloat($('fsal').value);
+      if ((minSalary > 0 || $('fhas').checked) && j.salary_lakh == null) return false;
+      if (minSalary > 0 && j.salary_lakh < minSalary) return false;
+      if ($('fmode').value && j.mode !== $('fmode').value) return false;
+      if ($('ftype').value && j.jtype !== $('ftype').value) return false;
+      
+      const maxAge = +$('fage').value;
+      if (maxAge && (j.age_days == null || j.age_days > maxAge)) return false;
+      if ($('fres').checked && !j.location_ok) return false;
+      if ($('fskill').checked && !fitOf(j).length) return false;
+      if ($('fwarn').checked && (j.tags || []).length) return false;
+      
+      return true;
+    }
+
+    /* ==========================================================================
+       Preview Dialog & Download Locks
+       ========================================================================== */
+    function prev(id, title) {
+      pid = id;
+      $('dfv').hidden = true;
+      const job = jobs.find((x) => x.id === id) || {};
+      const match = sc(job);
+      
+      $('pmeta').textContent = (match.score != null ? `Match ${match.score}%` : '') +
+        (match.gaps?.length ? ` · Not in your resume: ${match.gaps.slice(0, 6).join(', ')}` : '') +
+        ' · Built only from facts in your resume. Read it before sending.';
+        
+      $('pt').textContent = title;
+      $('ptpl').value = TPL;
+      $('pok').checked=false; // resets on every open
+      $('chl').innerHTML = '';
+      setPrev();
+      $('pdlg').showModal();
+    }
+
+    function setPrev() {
+      $('pf').src = `/api/jobs/${pid}/resume.html?t=${$('ptpl').value}&_=${Date.now()}`;
+      $('ppdf').dataset.h = `/api/jobs/${pid}/resume.pdf?t=${$('ptpl').value}`;
+      $('pdoc').dataset.h = `/api/jobs/${pid}/resume.docx`;
+      lockDl();
+    }
+
+    function lockDl() {
+      const isAcknowledged = $('pok').checked;
+      for (const a of [$('ppdf'), $('pdoc')]) {
+        a.setAttribute('aria-disabled', isAcknowledged ? 'false' : 'true');
+        a.title = isAcknowledged
+          ? 'Download'
+          : 'Locked: tick "I have read this resume and checked it is true" first';
+        if (isAcknowledged) {
+          a.href = a.dataset.h;
+        } else {
+          a.removeAttribute('href');
+        }
+      }
+    }
+
+    const lockedHit = (e) => {
+      const el = e.target.closest('#pdlg a[aria-disabled="true"]');
+      if (el) {
+        e.preventDefault();
+        toast('Read the resume, then tick the box to unlock PDF and DOCX.', 1);
+        $('pok').focus();
+      }
+      return !!el;
+    };
+
+    document.addEventListener('click', (e) => {
+      if (!lockedHit(e) && e.target.closest('a[href*="/resume.pdf"]')) {
+        toast('Preparing your PDF. This takes a few seconds.');
+      }
+    });
+    
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        lockedHit(e);
+      }
+    });
+
+    $('ptpl').onchange = () => {
+      setT($('ptpl').value);
+      $('tpl').value = $('ptpl').value;
+      setPrev();
+      cache.clear();
+      $('jobs').innerHTML = '';
+      draw();
+    };
+
+    /* ==========================================================================
+       Job Action Operations (Redo, Delete, Folder, Track, Refit, Cover)
+       ========================================================================== */
+    async function redo(id) {
+      try {
+        await api(`/api/jobs/${id}/tailor`, { method: 'POST' });
+        watch.add(id);
+        toast('Building. Preview opens when ready.');
+      } catch (err) {
+        toast(err.message, 1);
+      }
+      tick();
+    }
+
+    async function del(id) {
+      if (!confirm('Delete this job?')) return;
+      try {
+        await api('/api/jobs/' + id, { method: 'DELETE' });
+      } catch (err) {
+        toast(err.message, 1);
+      }
+      tick();
+    }
+
+    async function openFolder(id) {
+      try {
+        await api(id ? `/api/jobs/${id}/folder` : '/api/folder', { method: 'POST' });
+      } catch (err) {
+        toast(err.message, 1);
+      }
+    }
+
+    async function track(id, statusVal) {
+      try {
+        await post(`/api/jobs/${id}/track`, { status: statusVal });
+        toast(statusVal ? 'Marked ' + statusVal : 'Cleared');
+      } catch (err) {
+        toast(err.message, 1);
+      }
+      tick();
+    }
+
+    async function refit() {
+      if (!confirm('Re-fit already built resumes to one page? No AI calls; it only removes the least relevant lines and shrinks type to 9pt at most.')) return;
+      try {
+        const res = await api('/api/jobs/refit', { method: 'POST' });
+        toast(res.queued + ' resumes queued for re-fit. See Issues for any that need manual trim.');
+      } catch (err) {
+        toast(err.message, 1);
+      }
+      tick();
+    }
+
+    async function cover(id) {
+      toast('Writing cover letter...');
+      try {
+        await api(`/api/jobs/${id}/cover-letter`, { method: 'POST' });
+        toast('Saved as cover_letter.md in the job folder');
+      } catch (err) {
+        toast(err.message, 1);
+      }
+      tick();
+    }
+
+    /* ==========================================================================
+       Chat Modification Handler
+       ========================================================================== */
+    let chatBusy = false;
+    
+    function addMsg(cls, text) {
+      const msg = document.createElement('div');
+      msg.className = cls;
+      msg.textContent = text;
+      $('chl').append(msg);
+      $('chl').scrollTop = 1e6;
+      return msg;
+    }
+
+    async function sendChat(ev) {
+      ev.preventDefault();
+      const message = $('chm').value.trim();
+      if (!message || chatBusy) return false;
+      
+      chatBusy = true;
+      $('chm').value = '';
+      $('chb').disabled = true;
+      $('chb').textContent = 'Working...';
+      $('chm').setAttribute('aria-busy', 'true');
+      
+      addMsg('u', message);
+      const waiting = addMsg('w', 'Changing your resume. This takes up to a minute...');
+      
+      try {
+        const res = await post(`/api/jobs/${pid}/chat`, { message });
+        waiting.remove();
+        addMsg('a', res.reply + (res.flag ? ' (Note: ' + res.flag + ')' : ''));
+        $('pok').checked=false;
+        setPrev();
+        tick();
+      } catch (err) {
+        waiting.remove();
+        addMsg('e', 'Not changed: ' + err.message);
+      } finally {
+        chatBusy = false;
+        $('chb').disabled = false;
+        $('chb').textContent = 'Send';
+        $('chm').removeAttribute('aria-busy');
+        $('chm').focus();
+      }
+      return false;
+    }
+
+    $('chm').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+        e.preventDefault();
+        $('chf').requestSubmit();
+      }
+    });
+
+    $('chs').addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-m]');
+      if (btn) {
+        $('chm').value = btn.dataset.m;
+        $('chm').focus();
+      }
+    });
+
+    async function showDiff() {
+      const box = $('dfv');
+      if (!box.hidden) {
+        box.hidden = true;
+        return;
+      }
+      try {
+        const diffData = await api(`/api/jobs/${pid}/diff`);
+        let html = '';
+        html += `<p><b>Skills</b> removed: ${diffData.skills.removed.map(esc).map((x) => `<del>${x}</del>`).join(' ') || 'none'}</p>`;
+        for (const key of ['experience', 'projects']) {
+          for (const item of diffData[key]) {
+            html += `<p><b>${esc(item.name)}</b>${item.dropped ? ' <del>dropped</del>' : ''}</p><ul>` +
+              item.bullets.map((b) => `<li>${b.state === 'same' ? esc(b.text) : b.state === 'reworded' ? `<ins>${esc(b.text)}</ins> <span class="mut">(was: ${esc(b.was)})</span>` : `<ins>NEW? ${esc(b.text)}</ins>`}</li>`).join('') +
+              item.removed_bullets.map((b) => `<li><del>${esc(b)}</del></li>`).join('') +
+              '</ul>';
+          }
+        }
+        box.innerHTML = html;
+        box.hidden = false;
+      } catch (err) {
+        toast(err.message, 1);
+      }
+    }
+
+    async function openIssues() {
+      await tick();
+      $('idlg').showModal();
+    }
+
+    async function clearI() {
+      try {
+        await api('/api/issues', { method: 'DELETE' });
+      } catch (err) {
+        toast(err.message, 1);
+      }
+      tick();
+    }
+
+    /* ==========================================================================
+       Polling & Lifecycle
+       ========================================================================== */
+    async function tick() {
+      try {
+        const [statusRes, jobsRes, issuesRes] = await Promise.all([
+          api('/api/status'),
+          api('/api/jobs'),
+          api('/api/issues')
+        ]);
+        
+        jobs = jobsRes;
+        const nowDone = new Set(jobsRes.filter((x) => x.status === 'done').map((x) => x.id));
+        
+        if (prevDone) {
+          for (const id of nowDone) {
+            if (prevDone.has(id)) continue;
+            const job = jobsRes.find((y) => y.id === id);
+            const isMine = watch.has(id);
+            const isFirst = runActive && !shownRun;
+            
+            if (isMine || isFirst) {
+              watch.delete(id);
+              if (isFirst) shownRun = true;
+              if (document.querySelector('dialog[open]')) {
+                toast('Resume ready: ' + job.title);
+              } else {
+                prev(id, job.title);
+              }
+            }
+          }
+          
+          for (const id of [...watch]) {
+            const job = jobsRes.find((y) => y.id === id);
+            if (!job) {
+              watch.delete(id);
+            } else if (job.status === 'error') {
+              watch.delete(id);
+              toast('Could not build: ' + job.error, 1);
+            }
+          }
+        }
+        prevDone = nowDone;
+        
+        const isBusy = statusRes.scraping || watch.size > 0 || jobsRes.some((x) => x.status === 'tailoring' || x.status === 'queued');
+        busyNow = isBusy;
+        if (!isBusy) runActive = false;
+        
+        $('gob').disabled = statusRes.scraping;
+        $('gob').textContent = statusRes.scraping
+          ? 'Working...'
+          : ($('auto').checked ? 'Find jobs and build resumes' : 'Find jobs');
+          
+        $('prog').hidden = !isBusy;
+        $('st').textContent = statusRes.msg || '';
+        $('ic').textContent = issuesRes.length;
+        
+        const pendingCount = jobsRes.filter((x) => (x.status === 'new' || x.status === 'error') && fitOf(x).length).length;
+        const queuedCount = jobsRes.filter((x) => x.status === 'queued').length;
+        
+        $('pendb').hidden = !(pendingCount && profOk && !statusRes.scraping);
+        $('pendb').textContent = `Build ${pendingCount} matching`;
+        $('stopb').hidden = !queuedCount;
+        $('stopb').textContent = `Stop queue (${queuedCount})`;
+        
+        $('issues').innerHTML = issuesRes.map((i) => `
+          <div class="iss">
+            <b>${esc(i.kind)}</b> · ${esc(i.ref)}
+            <div class="mut">${esc(i.msg)} · ${esc(i.ts)}</div>
+          </div>
+        `).join('') || '<div class="empty">Nothing skipped or failed</div>';
+        
+        draw();
+      } catch (err) {
+      } finally {
+        $('skel').hidden = true;
+        clearTimeout(pollTimer);
+        pollTimer = setTimeout(poll, busyNow ? 3000 : 20000);
+      }
+    }
+
+    let pollTimer;
+    const poll = () => document.hidden ? (pollTimer = setTimeout(poll, 3000)) : tick();
+    
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) tick();
+    });
+    
+    // Initial load: Profile first, then tick
+    loadP().catch(() => {}).finally(tick);
+  </script>
+</body>
+</html>
